@@ -1,0 +1,39 @@
+{
+  "name": "litco-agent-connector",
+  "version": "0.1.0",
+  "description": "Connect Claude Code, Cursor and other MCP agents to LitKit, LitLex and LitSpace with your own Litco connection token.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "litco-mcp": "dist/litco-mcp.mjs"
+  },
+  "files": [
+    "dist",
+    "skills",
+    ".cursor-plugin",
+    ".claude-plugin",
+    "mcp.json",
+    ".mcp.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/litco-mcp.mjs --banner:js=\"#!/usr/bin/env node\nimport { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\" && chmod +x dist/litco-mcp.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm test && npm run build && git diff --exit-code dist"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.31.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

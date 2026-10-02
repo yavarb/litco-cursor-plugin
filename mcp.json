@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "litco": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${CURSOR_PLUGIN_ROOT}/dist/litco-mcp.mjs"],
+      "env": {
+        "LITCO_API_BASE_URL": "${LITCO_API_BASE_URL}"
+      }
+    }
+  }
+}

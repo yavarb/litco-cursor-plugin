@@ -1,0 +1,32 @@
+{
+  "name": "litco",
+  "description": "Work in LitKit (document review), LitLex (case law) and LitSpace (matter files) from Cursor, as yourself, with your own Litco connection.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Litco",
+    "email": "support@litco.ai"
+  },
+  "homepage": "https://litco.ai",
+  "repository": "https://github.com/yavarb/litcode-cursor-plugin",
+  "license": "Apache-2.0",
+  "keywords": [
+    "legal",
+    "ediscovery",
+    "litigation",
+    "case-law",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./mcp.json",
+  "variables": {
+    "type": "object",
+    "properties": {
+      "LITCO_API_BASE_URL": {
+        "type": "string",
+        "title": "LitKit address",
+        "description": "Your firm's LitKit address. Not a secret. Each person signs in with their own connection (`litco-mcp login`, or LITCO_CONNECTION_TOKEN in their own environment) — never set a connection token here, where it would be shared.",
+        "default": "https://app.litco.ai"
+      }
+    }
+  }
+}

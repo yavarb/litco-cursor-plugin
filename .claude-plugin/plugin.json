@@ -1,0 +1,10 @@
+{
+  "name": "litco",
+  "description": "Work in LitKit (document review), LitLex (case law) and LitSpace (matter files) from Claude Code, as yourself, with your own Litco connection.",
+  "version": "0.1.0",
+  "author": { "name": "Litco", "email": "support@litco.ai" },
+  "homepage": "https://litco.ai",
+  "repository": "https://github.com/yavarb/litcode-cursor-plugin",
+  "license": "Apache-2.0",
+  "keywords": ["legal", "ediscovery", "litigation", "case-law", "mcp"]
+}

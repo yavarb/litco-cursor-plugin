@@ -29,7 +29,7 @@ Every agent your Firm admin enables gets the same tools and the same access. The
 ### Cursor
 1. Install the **Litco** plugin from the Cursor marketplace, or add this repository as a plugin.
 2. In a terminal, run:
-   `npx -y github:yavarb/litcode-cursor-plugin login --client cursor`
+   `npx -y github:yavarb/litco-cursor-plugin login --client cursor`
    (or `node <plugin-dir>/dist/litco-mcp.mjs login --client cursor`).
 3. Open the link it prints, check the code, choose products and matters, and approve.
 4. Restart the MCP server in Cursor.
@@ -37,12 +37,12 @@ Every agent your Firm admin enables gets the same tools and the same access. The
 ### Claude Code
 In Claude Code:
 ```
-/plugin marketplace add yavarb/litcode-cursor-plugin
+/plugin marketplace add yavarb/litco-cursor-plugin
 /plugin install litco@litco
 ```
 Then sign in from a terminal:
 ```bash
-npx -y github:yavarb/litcode-cursor-plugin login --client claude-code
+npx -y github:yavarb/litco-cursor-plugin login --client claude-code
 ```
 Or wire the server by hand, without the plugin:
 ```bash

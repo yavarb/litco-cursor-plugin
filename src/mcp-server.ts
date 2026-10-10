@@ -321,6 +321,55 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
     { change_id: id("change_id") },
     (body) => entries("entry_change_undo", body),
   );
+  const ids = (what: string) => z.array(z.string().max(128)).max(200).optional().describe(what);
+  tool(
+    { name: "billing_matters_grid", product: "billing", write: false },
+    "Billing's Matters grid: one row per matter you can see, with hours, billed, unbilled and WIP amounts, " +
+      "budget against actual, timekeepers and task codes, plus totals over every matching matter. The firm's " +
+      "account holder sees every matter in full; anyone else sees full figures only on matters they administer " +
+      'for billing, and only their own entries elsewhere (reach "own", budget hidden). Money is null where you ' +
+      "can't see it, not zero. Billing filters, sorts and totals using only what you can see; totals never " +
+      "need paging.",
+    {
+      q: z.string().max(200).optional().describe("Text in the matter number, matter name or client name"),
+      statuses: z.array(z.enum(["open", "closed"])).max(2).optional().describe("Matter statuses to include"),
+      client_ids: ids("Billing client ids"),
+      responsible_ids: ids("Billing user ids of responsible attorneys"),
+      matter_ids: z.array(z.string().max(128)).max(1000).optional().describe("Only these Billing matters"),
+      overdue: z.boolean().optional().describe("true = open matters past their due date"),
+      has_unbilled: z.boolean().optional().describe("true = matters with unbilled billable work"),
+      created_from: day("Created on or after").optional(),
+      created_to: day("Created on or before").optional(),
+      due_from: day("Due on or after").optional(),
+      due_to: day("Due on or before").optional(),
+      period_from: day("Count only entries from this day; matters are not filtered by it").optional(),
+      period_to: day("Count only entries through this day").optional(),
+      sort: z
+        .enum([
+          "id",
+          "matter",
+          "client",
+          "responsible",
+          "created",
+          "due",
+          "status",
+          "hours",
+          "billed",
+          "unbilled",
+          "wip",
+          "last_activity",
+          "budget",
+          "timekeepers",
+          "task_codes",
+        ])
+        .optional()
+        .describe("Column to sort by (default matter); budget sorts by budget used, timekeepers by their count"),
+      dir: z.enum(["asc", "desc"]).optional().describe("Sort direction (default asc)"),
+      page: z.number().int().min(1).max(10_000).optional().describe("Page number, from 1"),
+      page_size: z.number().int().min(1).max(100).optional().describe("Default 50"),
+    },
+    (body) => entries("matters_grid", body),
+  );
 
   // ── LitSpace ──────────────────────────────────────────────────────────────
   tool(

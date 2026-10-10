@@ -7,6 +7,9 @@
 // write tools out of this install. Every agent your firm enables gets the same
 // tools and the same writes — the shim has no per-client rules.
 //
+// Billing entry tools reach your own time and expenses through the same
+// token (a token pinned to matters is refused for them).
+//
 // A firm API key (lkf_) reaches LitLex research only, so only the LitLex tools
 // are registered for it.
 
@@ -48,7 +51,7 @@ const seg = (s: string) => encodeURIComponent(s);
 
 export interface ToolSpec {
   name: string;
-  product: "identity" | "litkit" | "litlex" | "litspace";
+  product: "identity" | "litkit" | "litlex" | "litspace" | "billing";
   write: boolean;
 }
 
@@ -193,6 +196,130 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
         method: "POST",
         json: { text, ...(notForAna ? { agent: "suppress" } : {}) },
       }),
+  );
+
+  // ── Billing: your time and expense entries ────────────────────────────────
+  // Billing scopes every call to you: your own entries, plus everyone's on a
+  // matter where you are a billing admin. A change to more than one entry, a
+  // delete, or a move to another matter comes back first as a dry run
+  // (preview + confirm_token, 10 minutes); show the preview to your person
+  // and call again with the same arguments and confirm_token only once they
+  // agree. Every applied change returns a change_id for billing_undo_change.
+  const entries = (name: string, body: Record<string, unknown>) =>
+    client.request(`/api/billing/entries/${name}`, { method: "POST", json: body });
+  const day = (what: string) => z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe(`${what} (YYYY-MM-DD)`);
+  const kind = z.enum(["time", "expense"]);
+  const confirm = z.string().max(4096).optional().describe("confirm_token from the dry run, once your person agrees");
+  const entryIds = z.array(id("Entry id")).min(1).max(200);
+
+  tool(
+    { name: "billing_list_entries", product: "billing", write: false },
+    "List your logged Billing time and expense entries (and, on matters you administer for billing, everyone's).",
+    {
+      kind: kind.optional(),
+      matter_id: z.string().max(128).optional().describe("Billing matter id"),
+      user_id: z.string().max(128).optional().describe("Billing user id (billing admins)"),
+      date_from: day("First day").optional(),
+      date_to: day("Last day").optional(),
+      status: z.enum(["draft", "ready", "billed", "written_off"]).optional(),
+      limit: z.number().int().min(1).max(200).optional(),
+      cursor: z.string().max(512).optional(),
+    },
+    (body) => entries("entries_list", body),
+  );
+  tool(
+    { name: "billing_search_entries", product: "billing", write: false },
+    "Search your logged Billing entries by narrative, matter or client text.",
+    {
+      q: z.string().min(1).max(200),
+      kind: kind.optional(),
+      matter_id: z.string().max(128).optional(),
+      date_from: day("First day").optional(),
+      date_to: day("Last day").optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+    (body) => entries("entries_search", body),
+  );
+  tool(
+    { name: "billing_get_entry", product: "billing", write: false },
+    "One Billing entry in full.",
+    { entry_id: id("Entry id") },
+    (body) => entries("entry_get", body),
+  );
+  tool(
+    { name: "billing_create_entry", product: "billing", write: true },
+    "Create a Billing time or expense entry (a draft unless status is final).",
+    {
+      kind,
+      matter_id: id("Billing matter id"),
+      date: day("Day of the work"),
+      hours: z.string().max(10).optional().describe("Decimal hours, e.g. 1.5 (time)"),
+      amount: z.string().max(20).optional().describe("Amount, e.g. 42.50 (expense)"),
+      narrative: z.string().min(1).max(4000),
+      task_code: z.string().max(32).optional(),
+      activity_code: z.string().max(32).optional(),
+      expense_code: z.string().max(32).optional(),
+      status: z.enum(["draft", "final"]).optional(),
+      confirm_token: confirm,
+    },
+    (body) => entries("entry_create", body),
+  );
+  tool(
+    { name: "billing_update_entry", product: "billing", write: true },
+    "Edit a Billing entry's narrative, hours, amount, codes or date. Billed or locked entries are refused.",
+    {
+      entry_id: id("Entry id"),
+      patch: z
+        .object({
+          narrative: z.string().max(4000).optional(),
+          hours: z.string().max(10).optional(),
+          amount: z.string().max(20).optional(),
+          date: day("Day").optional(),
+          task_code: z.string().max(32).optional(),
+          activity_code: z.string().max(32).optional(),
+          expense_code: z.string().max(32).optional(),
+        })
+        .describe("Only the fields to change"),
+      confirm_token: confirm,
+    },
+    (body) => entries("entry_update", body),
+  );
+  tool(
+    { name: "billing_move_entries", product: "billing", write: true },
+    "Move Billing entries to another day or another matter, optionally recoding them.",
+    {
+      entry_ids: entryIds,
+      to_date: day("New day").optional(),
+      to_matter_id: z.string().max(128).optional().describe("Billing matter id"),
+      task_code: z.string().max(32).optional(),
+      activity_code: z.string().max(32).optional(),
+      confirm_token: confirm,
+    },
+    (body) => entries("entry_move", body),
+  );
+  tool(
+    { name: "billing_copy_entry", product: "billing", write: true },
+    "Copy one Billing entry onto other days (same matter, codes and narrative), as drafts by default.",
+    {
+      entry_id: id("Entry to copy"),
+      dates: z.array(day("Day")).min(1).max(31),
+      hours_override: z.string().max(10).optional().describe("Hours on every copy, e.g. 8.0"),
+      status: z.enum(["draft", "final"]).optional(),
+      confirm_token: confirm,
+    },
+    (body) => entries("entry_duplicate", body),
+  );
+  tool(
+    { name: "billing_delete_entries", product: "billing", write: true },
+    "Delete Billing entries (always a dry run first). Billed or locked entries are refused.",
+    { entry_ids: entryIds, confirm_token: confirm },
+    (body) => entries("entry_delete", body),
+  );
+  tool(
+    { name: "billing_undo_change", product: "billing", write: true },
+    "Undo one applied Billing entry change by its change_id.",
+    { change_id: id("change_id") },
+    (body) => entries("entry_change_undo", body),
   );
 
   // ── LitSpace ──────────────────────────────────────────────────────────────

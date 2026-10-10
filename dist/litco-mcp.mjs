@@ -7289,13 +7289,17 @@ var ApiError = class extends Error {
   status;
   code;
 };
-function explainStatus(status, code) {
+function explainStatus(status, code, detail = "") {
   if (status === 401) {
     return "Litco refused the token (unknown, revoked, expired, or no longer allowed by your firm). Create a new connection in LitKit \u2192 Settings \u2192 Connections, or run `litco-mcp login`.";
   }
   if (status === 403 && (code === "connection_token_forbidden" || code === "firm_api_key_forbidden")) {
     return "A connection cannot use this part of LitKit (administration, exports, launches and adding people are browser-only).";
   }
+  if (status === 501 && code === "billing_not_updated") {
+    return "Billing hasn't been updated yet to let connected agents work with entries. Use the Billing page for now.";
+  }
+  if (detail && (code === "connection_pinned" || [400, 409, 410, 422].includes(status))) return detail;
   if (status === 403) return "You don't have permission for this here, or it's outside the products or matters this connection covers.";
   if (status === 404) return "Not found, or not visible to you.";
   if (status === 429) return "Rate limited \u2014 wait a moment and retry.";
@@ -7342,12 +7346,15 @@ var LitcoClient = class {
     });
     if (!res.ok) {
       let code = "";
+      let detail = "";
       try {
         const j = await res.json();
-        code = typeof j.error === "string" ? j.error : "";
+        code = typeof j.error === "string" ? j.error : typeof j.type === "string" ? j.type : "";
+        const d = typeof j.detail === "string" ? j.detail : typeof j.title === "string" ? j.title : "";
+        detail = d.slice(0, 500);
       } catch {
       }
-      throw new ApiError(res.status, code, explainStatus(res.status, code));
+      throw new ApiError(res.status, code, explainStatus(res.status, code, detail));
     }
     if (opts.text) return await res.text();
     const ct = res.headers.get("content-type") ?? "";
@@ -21797,6 +21804,118 @@ function registerTools(server, client, opts) {
       method: "POST",
       json: { text, ...notForAna ? { agent: "suppress" } : {} }
     })
+  );
+  const entries = (name, body) => client.request(`/api/billing/entries/${name}`, { method: "POST", json: body });
+  const day = (what) => external_exports.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe(`${what} (YYYY-MM-DD)`);
+  const kind = external_exports.enum(["time", "expense"]);
+  const confirm = external_exports.string().max(4096).optional().describe("confirm_token from the dry run, once your person agrees");
+  const entryIds = external_exports.array(id("Entry id")).min(1).max(200);
+  tool(
+    { name: "billing_list_entries", product: "billing", write: false },
+    "List your logged Billing time and expense entries (and, on matters you administer for billing, everyone's).",
+    {
+      kind: kind.optional(),
+      matter_id: external_exports.string().max(128).optional().describe("Billing matter id"),
+      user_id: external_exports.string().max(128).optional().describe("Billing user id (billing admins)"),
+      date_from: day("First day").optional(),
+      date_to: day("Last day").optional(),
+      status: external_exports.enum(["draft", "ready", "billed", "written_off"]).optional(),
+      limit: external_exports.number().int().min(1).max(200).optional(),
+      cursor: external_exports.string().max(512).optional()
+    },
+    (body) => entries("entries_list", body)
+  );
+  tool(
+    { name: "billing_search_entries", product: "billing", write: false },
+    "Search your logged Billing entries by narrative, matter or client text.",
+    {
+      q: external_exports.string().min(1).max(200),
+      kind: kind.optional(),
+      matter_id: external_exports.string().max(128).optional(),
+      date_from: day("First day").optional(),
+      date_to: day("Last day").optional(),
+      limit: external_exports.number().int().min(1).max(100).optional()
+    },
+    (body) => entries("entries_search", body)
+  );
+  tool(
+    { name: "billing_get_entry", product: "billing", write: false },
+    "One Billing entry in full.",
+    { entry_id: id("Entry id") },
+    (body) => entries("entry_get", body)
+  );
+  tool(
+    { name: "billing_create_entry", product: "billing", write: true },
+    "Create a Billing time or expense entry (a draft unless status is final).",
+    {
+      kind,
+      matter_id: id("Billing matter id"),
+      date: day("Day of the work"),
+      hours: external_exports.string().max(10).optional().describe("Decimal hours, e.g. 1.5 (time)"),
+      amount: external_exports.string().max(20).optional().describe("Amount, e.g. 42.50 (expense)"),
+      narrative: external_exports.string().min(1).max(4e3),
+      task_code: external_exports.string().max(32).optional(),
+      activity_code: external_exports.string().max(32).optional(),
+      expense_code: external_exports.string().max(32).optional(),
+      status: external_exports.enum(["draft", "final"]).optional(),
+      confirm_token: confirm
+    },
+    (body) => entries("entry_create", body)
+  );
+  tool(
+    { name: "billing_update_entry", product: "billing", write: true },
+    "Edit a Billing entry's narrative, hours, amount, codes or date. Billed or locked entries are refused.",
+    {
+      entry_id: id("Entry id"),
+      patch: external_exports.object({
+        narrative: external_exports.string().max(4e3).optional(),
+        hours: external_exports.string().max(10).optional(),
+        amount: external_exports.string().max(20).optional(),
+        date: day("Day").optional(),
+        task_code: external_exports.string().max(32).optional(),
+        activity_code: external_exports.string().max(32).optional(),
+        expense_code: external_exports.string().max(32).optional()
+      }).describe("Only the fields to change"),
+      confirm_token: confirm
+    },
+    (body) => entries("entry_update", body)
+  );
+  tool(
+    { name: "billing_move_entries", product: "billing", write: true },
+    "Move Billing entries to another day or another matter, optionally recoding them.",
+    {
+      entry_ids: entryIds,
+      to_date: day("New day").optional(),
+      to_matter_id: external_exports.string().max(128).optional().describe("Billing matter id"),
+      task_code: external_exports.string().max(32).optional(),
+      activity_code: external_exports.string().max(32).optional(),
+      confirm_token: confirm
+    },
+    (body) => entries("entry_move", body)
+  );
+  tool(
+    { name: "billing_copy_entry", product: "billing", write: true },
+    "Copy one Billing entry onto other days (same matter, codes and narrative), as drafts by default.",
+    {
+      entry_id: id("Entry to copy"),
+      dates: external_exports.array(day("Day")).min(1).max(31),
+      hours_override: external_exports.string().max(10).optional().describe("Hours on every copy, e.g. 8.0"),
+      status: external_exports.enum(["draft", "final"]).optional(),
+      confirm_token: confirm
+    },
+    (body) => entries("entry_duplicate", body)
+  );
+  tool(
+    { name: "billing_delete_entries", product: "billing", write: true },
+    "Delete Billing entries (always a dry run first). Billed or locked entries are refused.",
+    { entry_ids: entryIds, confirm_token: confirm },
+    (body) => entries("entry_delete", body)
+  );
+  tool(
+    { name: "billing_undo_change", product: "billing", write: true },
+    "Undo one applied Billing entry change by its change_id.",
+    { change_id: id("change_id") },
+    (body) => entries("entry_change_undo", body)
   );
   tool(
     { name: "litspace_list_files", product: "litspace", write: false },

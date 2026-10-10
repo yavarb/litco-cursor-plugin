@@ -123,13 +123,19 @@ export class ApiError extends Error {
 }
 
 /** Human explanation of a refusal, so the agent can tell its person what to do. */
-export function explainStatus(status: number, code: string): string {
+export function explainStatus(status: number, code: string, detail = ""): string {
   if (status === 401) {
     return "Litco refused the token (unknown, revoked, expired, or no longer allowed by your firm). Create a new connection in LitKit → Settings → Connections, or run `litco-mcp login`.";
   }
   if (status === 403 && (code === "connection_token_forbidden" || code === "firm_api_key_forbidden")) {
     return "A connection cannot use this part of LitKit (administration, exports, launches and adding people are browser-only).";
   }
+  if (status === 501 && code === "billing_not_updated") {
+    return "Billing hasn't been updated yet to let connected agents work with entries. Use the Billing page for now.";
+  }
+  // Billing explains its own refusals (locked or billed entries, an expired
+  // confirm token, an entry edited since); pass its words through.
+  if (detail && (code === "connection_pinned" || [400, 409, 410, 422].includes(status))) return detail;
   if (status === 403) return "You don't have permission for this here, or it's outside the products or matters this connection covers.";
   if (status === 404) return "Not found, or not visible to you.";
   if (status === 429) return "Rate limited — wait a moment and retry.";
@@ -186,13 +192,16 @@ export class LitcoClient {
     });
     if (!res.ok) {
       let code = "";
+      let detail = "";
       try {
-        const j = (await res.json()) as { error?: unknown };
-        code = typeof j.error === "string" ? j.error : "";
+        const j = (await res.json()) as { error?: unknown; type?: unknown; title?: unknown; detail?: unknown };
+        code = typeof j.error === "string" ? j.error : typeof j.type === "string" ? j.type : "";
+        const d = typeof j.detail === "string" ? j.detail : typeof j.title === "string" ? j.title : "";
+        detail = d.slice(0, 500);
       } catch {
         // non-JSON error body
       }
-      throw new ApiError(res.status, code, explainStatus(res.status, code));
+      throw new ApiError(res.status, code, explainStatus(res.status, code, detail));
     }
     if (opts.text) return (await res.text()) as T;
     const ct = res.headers.get("content-type") ?? "";

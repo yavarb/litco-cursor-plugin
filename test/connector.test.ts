@@ -123,6 +123,96 @@ describe("tool registry", () => {
   });
 });
 
+describe("Billing entry tools", () => {
+  type Handler = (args: Record<string, unknown>) => Promise<{ content: Array<{ text: string }>; isError?: boolean }>;
+  function capture(fetchImpl: typeof fetch, readOnly = false) {
+    const handlers = new Map<string, Handler>();
+    const server = { registerTool: (name: string, _meta: unknown, cb: Handler) => handlers.set(name, cb) } as never;
+    const client = new LitcoClient("https://x.litco.ai", { kind: "connection", token: LKU, source: "file" }, fetchImpl);
+    registerTools(server, client, { readOnly });
+    return handlers;
+  }
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+
+  it("a connection gets every entry tool; read-only keeps only the reads; a firm key gets none", () => {
+    const all = capture((async () => json({})) as never);
+    for (const n of [
+      "billing_list_entries",
+      "billing_search_entries",
+      "billing_get_entry",
+      "billing_create_entry",
+      "billing_update_entry",
+      "billing_move_entries",
+      "billing_copy_entry",
+      "billing_delete_entries",
+      "billing_undo_change",
+    ]) {
+      expect(all.has(n), n).toBe(true);
+    }
+    const ro = capture((async () => json({})) as never, true);
+    expect([...ro.keys()].filter((n) => n.startsWith("billing_")).sort()).toEqual([
+      "billing_get_entry",
+      "billing_list_entries",
+      "billing_search_entries",
+    ]);
+    const { server, names } = fakeServer();
+    registerTools(server, new LitcoClient("https://x.litco.ai", { kind: "firm_key", token: LKF, source: "env:LITCO_API_KEY" }), {
+      readOnly: false,
+    });
+    expect(names.some((n) => n.startsWith("billing_"))).toBe(false);
+  });
+
+  it("copies an entry as a dry run, then applies with the confirm token (Halvorsen fixture)", async () => {
+    const calls: Array<{ url: string; body: unknown }> = [];
+    const handlers = capture((async (url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      calls.push({ url, body });
+      if (!body.confirm_token) {
+        return json({
+          dry_run: true,
+          preview: [1, 2, 3, 4, 5].map((d) => ({ before: null, after: { date: `2026-10-0${d + 3}`, hours: "8.0", status: "draft" } })),
+          confirm_token: "ct_fixture",
+          expires_at: "2026-10-09T12:10:00Z",
+          summary: "Create 5 draft time entries on Halvorsen v. Quillmark, Oct 4–8, 8.0h each",
+        });
+      }
+      return json({ change_id: "chg_1", created: 5 });
+    }) as never);
+    const copy = handlers.get("billing_copy_entry")!;
+    const args = { entry_id: "te_today", dates: ["2026-10-04", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08"], hours_override: "8.0" };
+    const first = await copy(args);
+    expect(first.isError).toBeUndefined();
+    const preview = JSON.parse(first.content[0]!.text);
+    expect(preview.dry_run).toBe(true);
+    expect(preview.preview).toHaveLength(5);
+    const second = await copy({ ...args, confirm_token: preview.confirm_token });
+    expect(JSON.parse(second.content[0]!.text).change_id).toBe("chg_1");
+    expect(calls.map((c) => c.url)).toEqual([
+      "https://x.litco.ai/api/billing/entries/entry_duplicate",
+      "https://x.litco.ai/api/billing/entries/entry_duplicate",
+    ]);
+    expect((calls[1]!.body as { confirm_token: string }).confirm_token).toBe("ct_fixture");
+  });
+
+  it("says plainly when Billing has not been updated, and passes Billing's refusals through", async () => {
+    const notYet = capture((async () =>
+      json({ type: "billing_not_updated", title: "x", status: 501 }, 501)) as never);
+    const r1 = await notYet.get("billing_list_entries")!({});
+    expect(r1.isError).toBe(true);
+    expect(r1.content[0]!.text).toMatch(/hasn't been updated yet/);
+
+    const locked = capture((async () => json({ title: "This entry is billed and can't be changed.", status: 409 }, 409)) as never);
+    const r2 = await locked.get("billing_update_entry")!({ entry_id: "te_1", patch: { hours: "2.0" } });
+    expect(r2.content[0]!.text).toBe("This entry is billed and can't be changed.");
+
+    const hidden = capture((async () => json({ title: "Not found", status: 404 }, 404)) as never);
+    const r3 = await hidden.get("billing_get_entry")!({ entry_id: "te_other" });
+    expect(r3.content[0]!.text).toMatch(/Not found, or not visible to you/);
+    expect(r3.content[0]!.text).not.toContain(LKU);
+  });
+});
+
 describe("login (device flow)", () => {
   it("polls through pending and slow_down, then saves the token", async () => {
     const replies = [

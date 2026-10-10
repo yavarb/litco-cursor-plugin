@@ -325,9 +325,10 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
   tool(
     { name: "billing_matters_grid", product: "billing", write: false },
     "Billing's Matters grid: one row per matter you can see, with hours, billed, unbilled and WIP amounts, " +
-      "budget against actual, timekeepers and task codes, plus totals over every matching matter. Matters you " +
-      'administer for billing show everyone\'s figures; others with your entries show only yours (reach "own"). ' +
-      "Sorted, filtered and paged by Billing.",
+      "budget against actual, timekeepers and task codes, plus totals over every matching matter. The firm's " +
+      "account holder sees the firm and matters you administer for billing show everyone's figures; other " +
+      'matters with your entries show only yours (reach "own"). Money is null where you can\'t see it, not ' +
+      "zero. Sorted, filtered and paged by Billing; totals never need paging.",
     {
       q: z.string().max(200).optional().describe("Text in the matter number, matter name or client name"),
       statuses: z.array(z.enum(["open", "closed"])).max(2).optional(),
@@ -340,7 +341,7 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
       created_to: day("Created on or before").optional(),
       due_from: day("Due on or after").optional(),
       due_to: day("Due on or before").optional(),
-      period_from: day("Count only entries from this day").optional(),
+      period_from: day("Count only entries from this day; matters are not filtered by it").optional(),
       period_to: day("Count only entries through this day").optional(),
       sort: z
         .enum([
@@ -363,7 +364,7 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
         .optional(),
       dir: z.enum(["asc", "desc"]).optional(),
       page: z.number().int().min(1).max(10_000).optional(),
-      page_size: z.number().int().min(1).max(500).optional(),
+      page_size: z.number().int().min(1).max(100).optional().describe("Default 50"),
     },
     (body) => entries("matters_grid", body),
   );

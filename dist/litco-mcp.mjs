@@ -21920,7 +21920,7 @@ function registerTools(server, client, opts) {
   const ids = (what) => external_exports.array(external_exports.string().max(128)).max(200).optional().describe(what);
   tool(
     { name: "billing_matters_grid", product: "billing", write: false },
-    `Billing's Matters grid: one row per matter you can see, with hours, billed, unbilled and WIP amounts, budget against actual, timekeepers and task codes, plus totals over every matching matter. Matters you administer for billing show everyone's figures; others with your entries show only yours (reach "own"). Sorted, filtered and paged by Billing.`,
+    `Billing's Matters grid: one row per matter you can see, with hours, billed, unbilled and WIP amounts, budget against actual, timekeepers and task codes, plus totals over every matching matter. The firm's account holder sees the firm and matters you administer for billing show everyone's figures; other matters with your entries show only yours (reach "own"). Money is null where you can't see it, not zero. Sorted, filtered and paged by Billing; totals never need paging.`,
     {
       q: external_exports.string().max(200).optional().describe("Text in the matter number, matter name or client name"),
       statuses: external_exports.array(external_exports.enum(["open", "closed"])).max(2).optional(),
@@ -21933,7 +21933,7 @@ function registerTools(server, client, opts) {
       created_to: day("Created on or before").optional(),
       due_from: day("Due on or after").optional(),
       due_to: day("Due on or before").optional(),
-      period_from: day("Count only entries from this day").optional(),
+      period_from: day("Count only entries from this day; matters are not filtered by it").optional(),
       period_to: day("Count only entries through this day").optional(),
       sort: external_exports.enum([
         "id",
@@ -21954,7 +21954,7 @@ function registerTools(server, client, opts) {
       ]).optional(),
       dir: external_exports.enum(["asc", "desc"]).optional(),
       page: external_exports.number().int().min(1).max(1e4).optional(),
-      page_size: external_exports.number().int().min(1).max(500).optional()
+      page_size: external_exports.number().int().min(1).max(100).optional().describe("Default 50")
     },
     (body) => entries("matters_grid", body)
   );

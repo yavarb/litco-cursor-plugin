@@ -2,6 +2,7 @@ import { mkdtemp, readFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import {
   ApiError,
   ConfigError,
@@ -208,6 +209,31 @@ describe("Billing entry tools", () => {
     expect(out.isError).toBeUndefined();
     expect(JSON.parse(out.content[0]!.text).data[0].reach).toBe("own");
     expect(calls).toEqual([{ url: "https://x.litco.ai/api/billing/entries/matters_grid", body: args }]);
+  });
+
+  it("refuses malformed grid arguments before calling LitCo", () => {
+    let shape: z.ZodRawShape | undefined;
+    const server = {
+      registerTool: (name: string, meta: { inputSchema: z.ZodRawShape }) => {
+        if (name === "billing_matters_grid") shape = meta.inputSchema;
+      },
+    } as never;
+    registerTools(server, new LitcoClient("https://x.litco.ai", { kind: "connection", token: LKU, source: "file" }), {
+      readOnly: true,
+    });
+    const schema = z.object(shape!);
+    expect(schema.safeParse({ overdue: true, sort: "unbilled", dir: "desc", page_size: 100 }).success).toBe(true);
+    for (const bad of [
+      { page_size: 101 },
+      { page: 0 },
+      { sort: "narrative" },
+      { statuses: ["archived"] },
+      { matter_ids: Array.from({ length: 1001 }, (_, i) => `mat_${i}`) },
+      { due_from: "10/09/2026" },
+      { q: "x".repeat(201) },
+    ]) {
+      expect(schema.safeParse(bad).success, JSON.stringify(bad).slice(0, 60)).toBe(false);
+    }
   });
 
   it("says plainly when Billing has not been updated, and passes Billing's refusals through", async () => {

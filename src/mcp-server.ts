@@ -326,12 +326,13 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
     { name: "billing_matters_grid", product: "billing", write: false },
     "Billing's Matters grid: one row per matter you can see, with hours, billed, unbilled and WIP amounts, " +
       "budget against actual, timekeepers and task codes, plus totals over every matching matter. The firm's " +
-      "account holder sees the firm and matters you administer for billing show everyone's figures; other " +
-      'matters with your entries show only yours (reach "own"). Money is null where you can\'t see it, not ' +
-      "zero. Sorted, filtered and paged by Billing; totals never need paging.",
+      "account holder sees every matter in full; anyone else sees full figures only on matters they administer " +
+      'for billing, and only their own entries elsewhere (reach "own", budget hidden). Money is null where you ' +
+      "can't see it, not zero. Billing filters, sorts and totals using only what you can see; totals never " +
+      "need paging.",
     {
       q: z.string().max(200).optional().describe("Text in the matter number, matter name or client name"),
-      statuses: z.array(z.enum(["open", "closed"])).max(2).optional(),
+      statuses: z.array(z.enum(["open", "closed"])).max(2).optional().describe("Matter statuses to include"),
       client_ids: ids("Billing client ids"),
       responsible_ids: ids("Billing user ids of responsible attorneys"),
       matter_ids: z.array(z.string().max(128)).max(1000).optional().describe("Only these Billing matters"),
@@ -361,9 +362,10 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
           "timekeepers",
           "task_codes",
         ])
-        .optional(),
-      dir: z.enum(["asc", "desc"]).optional(),
-      page: z.number().int().min(1).max(10_000).optional(),
+        .optional()
+        .describe("Column to sort by (default matter); budget sorts by budget used, timekeepers by their count"),
+      dir: z.enum(["asc", "desc"]).optional().describe("Sort direction (default asc)"),
+      page: z.number().int().min(1).max(10_000).optional().describe("Page number, from 1"),
       page_size: z.number().int().min(1).max(100).optional().describe("Default 50"),
     },
     (body) => entries("matters_grid", body),

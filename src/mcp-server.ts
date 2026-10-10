@@ -321,6 +321,52 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
     { change_id: id("change_id") },
     (body) => entries("entry_change_undo", body),
   );
+  const ids = (what: string) => z.array(z.string().max(128)).max(200).optional().describe(what);
+  tool(
+    { name: "billing_matters_grid", product: "billing", write: false },
+    "Billing's Matters grid: one row per matter you can see, with hours, billed, unbilled and WIP amounts, " +
+      "budget against actual, timekeepers and task codes, plus totals over every matching matter. Matters you " +
+      'administer for billing show everyone\'s figures; others with your entries show only yours (reach "own"). ' +
+      "Sorted, filtered and paged by Billing.",
+    {
+      q: z.string().max(200).optional().describe("Text in the matter number, matter name or client name"),
+      statuses: z.array(z.enum(["open", "closed"])).max(2).optional(),
+      client_ids: ids("Billing client ids"),
+      responsible_ids: ids("Billing user ids of responsible attorneys"),
+      matter_ids: z.array(z.string().max(128)).max(1000).optional().describe("Only these Billing matters"),
+      overdue: z.boolean().optional().describe("true = open matters past their due date"),
+      has_unbilled: z.boolean().optional().describe("true = matters with unbilled billable work"),
+      created_from: day("Created on or after").optional(),
+      created_to: day("Created on or before").optional(),
+      due_from: day("Due on or after").optional(),
+      due_to: day("Due on or before").optional(),
+      period_from: day("Count only entries from this day").optional(),
+      period_to: day("Count only entries through this day").optional(),
+      sort: z
+        .enum([
+          "id",
+          "matter",
+          "client",
+          "responsible",
+          "created",
+          "due",
+          "status",
+          "hours",
+          "billed",
+          "unbilled",
+          "wip",
+          "last_activity",
+          "budget",
+          "timekeepers",
+          "task_codes",
+        ])
+        .optional(),
+      dir: z.enum(["asc", "desc"]).optional(),
+      page: z.number().int().min(1).max(10_000).optional(),
+      page_size: z.number().int().min(1).max(500).optional(),
+    },
+    (body) => entries("matters_grid", body),
+  );
 
   // ── LitSpace ──────────────────────────────────────────────────────────────
   tool(

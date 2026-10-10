@@ -147,6 +147,7 @@ describe("Billing entry tools", () => {
       "billing_copy_entry",
       "billing_delete_entries",
       "billing_undo_change",
+      "billing_matters_grid",
     ]) {
       expect(all.has(n), n).toBe(true);
     }
@@ -154,6 +155,7 @@ describe("Billing entry tools", () => {
     expect([...ro.keys()].filter((n) => n.startsWith("billing_")).sort()).toEqual([
       "billing_get_entry",
       "billing_list_entries",
+      "billing_matters_grid",
       "billing_search_entries",
     ]);
     const { server, names } = fakeServer();
@@ -193,6 +195,19 @@ describe("Billing entry tools", () => {
       "https://x.litco.ai/api/billing/entries/entry_duplicate",
     ]);
     expect((calls[1]!.body as { confirm_token: string }).confirm_token).toBe("ct_fixture");
+  });
+
+  it("reads the Matters grid through the entries door with the filter as sent", async () => {
+    const calls: Array<{ url: string; body: unknown }> = [];
+    const handlers = capture((async (url: string, init: RequestInit) => {
+      calls.push({ url, body: JSON.parse(String(init.body)) });
+      return json({ data: [{ id: "mat_1", reach: "own", hours: "3.50" }], total: 1, totals: { matters: 1, hours: "3.50" } });
+    }) as never);
+    const args = { overdue: true, sort: "unbilled", dir: "desc", page_size: 25 };
+    const out = await handlers.get("billing_matters_grid")!(args);
+    expect(out.isError).toBeUndefined();
+    expect(JSON.parse(out.content[0]!.text).data[0].reach).toBe("own");
+    expect(calls).toEqual([{ url: "https://x.litco.ai/api/billing/entries/matters_grid", body: args }]);
   });
 
   it("says plainly when Billing has not been updated, and passes Billing's refusals through", async () => {

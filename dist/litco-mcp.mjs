@@ -21917,6 +21917,47 @@ function registerTools(server, client, opts) {
     { change_id: id("change_id") },
     (body) => entries("entry_change_undo", body)
   );
+  const ids = (what) => external_exports.array(external_exports.string().max(128)).max(200).optional().describe(what);
+  tool(
+    { name: "billing_matters_grid", product: "billing", write: false },
+    `Billing's Matters grid: one row per matter you can see, with hours, billed, unbilled and WIP amounts, budget against actual, timekeepers and task codes, plus totals over every matching matter. Matters you administer for billing show everyone's figures; others with your entries show only yours (reach "own"). Sorted, filtered and paged by Billing.`,
+    {
+      q: external_exports.string().max(200).optional().describe("Text in the matter number, matter name or client name"),
+      statuses: external_exports.array(external_exports.enum(["open", "closed"])).max(2).optional(),
+      client_ids: ids("Billing client ids"),
+      responsible_ids: ids("Billing user ids of responsible attorneys"),
+      matter_ids: external_exports.array(external_exports.string().max(128)).max(1e3).optional().describe("Only these Billing matters"),
+      overdue: external_exports.boolean().optional().describe("true = open matters past their due date"),
+      has_unbilled: external_exports.boolean().optional().describe("true = matters with unbilled billable work"),
+      created_from: day("Created on or after").optional(),
+      created_to: day("Created on or before").optional(),
+      due_from: day("Due on or after").optional(),
+      due_to: day("Due on or before").optional(),
+      period_from: day("Count only entries from this day").optional(),
+      period_to: day("Count only entries through this day").optional(),
+      sort: external_exports.enum([
+        "id",
+        "matter",
+        "client",
+        "responsible",
+        "created",
+        "due",
+        "status",
+        "hours",
+        "billed",
+        "unbilled",
+        "wip",
+        "last_activity",
+        "budget",
+        "timekeepers",
+        "task_codes"
+      ]).optional(),
+      dir: external_exports.enum(["asc", "desc"]).optional(),
+      page: external_exports.number().int().min(1).max(1e4).optional(),
+      page_size: external_exports.number().int().min(1).max(500).optional()
+    },
+    (body) => entries("matters_grid", body)
+  );
   tool(
     { name: "litspace_list_files", product: "litspace", write: false },
     "List files in a matter's LitSpace vault (optionally inside a folder).",

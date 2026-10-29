@@ -45,7 +45,7 @@ For an unmerged canonical change, always pass the explicit app worktree path: th
 | R7 | DEFAULT | "Works with your agents", never "bring your own agent/model" | both | check-yavar-rules R7; iOS brand-copy guard |
 | R8 | DEFAULT | One credit price per action and one firm credit pool number | both | review-only (+ price-table unit test where one exists) |
 | R9 | DEFAULT | Credits, not dollars, including Review cost-so-far, docs table and run cards; exceptions only for platform admin and plan checkout | both | check-yavar-rules R9 (scoped) + review |
-| R10 | FIRM | No purchases in iOS; firms buy on the web | iOS | iOS: no-StoreKit guard (check_billing_origin.sh) |
+| R10 | FIRM | No purchases or web-purchase links or calls to action in iOS; server sets `canBuy=false` on iOS | iOS | iOS: no-StoreKit guard (check_billing_origin.sh); purchase links/CTAs and server capability: review-only |
 | R11 | DEFAULT | It's "Ana", never "Ask Ana" or chatbot framing | both | branding-copy.test.ts + check-yavar-rules R11; iOS check_no_ask_ana.sh |
 | R12 | FIRM | No client or matter names in greetings, placeholders, empty states, chips or example prompts | both | check-yavar-rules R12 (interpolation in placeholder props) + review |
 | R13 | FIRM | No real client, matter or person names in product copy or examples | both | check-yavar-rules R13 (deny-list) |
@@ -73,6 +73,11 @@ For an unmerged canonical change, always pass the explicit app worktree path: th
 | R35 | DEFAULT | The iPhone Review grid stays in its frame while scrolling | iOS | review-only |
 | R36 | DEFAULT | Compact iPhone Review chrome leaves results visible | both | review-only |
 | R37 | DEFAULT | Uploads resume and show transferred-byte progress rather than a stuck zero | both | review-only |
+| R38 | DEFAULT | Files puts "Browse folders" at the top, directly under search | both | review-only |
+| R39 | DEFAULT | Files reopens the last folder visited | iOS | review-only |
+| R40 | DEFAULT | Channels opens to the default matter; product tabs switch in place in web order | iOS | review-only |
+| R41 | DEFAULT | Ana's icon is the LitCo logo everywhere | both | review-only |
+| R42 | DEFAULT | Review shows credits or omits the figure, never dollar costs; only platform admins see raw cost | both | check-yavar-rules R9 (scoped) + review |
 
 ---
 
@@ -150,7 +155,7 @@ For an unmerged canonical change, always pass the explicit app worktree path: th
 ## R9 — Credits, not dollars (except platform admin)
 - **Tier:** DEFAULT.
 - **Rule:**
-  - Job costs, usage and balances show credits. On Review this includes the cost-so-far tile, the docs table column and run cards.
+  - Job costs, usage and balances show credits. On Review this includes the cost-so-far tile, the docs table column and run cards; the 2026-10-28 11:57 PM ET ruling permits dropping the figure instead (R42).
   - Dollar amounts appear only to the platform admin and on the plan checkout and Stripe pages.
   - Customers never see "tokens".
 - **Yavar:** 2026-10-22 1:57 AM ET: "show everyone on a matter the credits a review/tag job costs (no dollars except to platform admin)." Review-surface clarification relayed 2026-10-29 12:27 AM ET.
@@ -159,14 +164,14 @@ For an unmerged canonical change, always pass the explicit app worktree path: th
 - **Scope:** both.
 - **Guard:** check-yavar-rules R9 warns on dollar literals (`$` followed by digits, `USD`) and the word "tokens" in user-facing text under review, usage, credits and job components. "Under review, usage, credits and job components" means a path segment named review, usage, credit(s) or job(s) (`creditPaths`). Platform admin and plan checkout (`pricingPaths`: `src/app/(app)/settings/plan/`, the admin billing plan and credit-pack files, `src/app/api/admin/billing/checkout/`) are allow-listed, as is the R3 `platformAdminGates` list. Numeric capture substitutions in a regex `.replace` / `.replaceAll` replacement string (e.g. `" $1"`) are not prices and are not flagged; literal prices there still are. Dollars computed at runtime (e.g. a `usd()` formatter) are not lexically visible; review covers the rest.
 
-## R10 — No purchases in iOS; firms buy on the web
+## R10 — No purchases or web-purchase links or calls to action in iOS
 - **Tier:** FIRM.
-- **Rule:** The iPhone and iPad app has no purchases: firms buy on the web, never credits or plans in the app (no StoreKit or Apple in-app purchase). Buying credits, usage and plan changes link out to the LitCo web billing page.
-- **Yavar:** 2026-10-22 2:11 AM ET (link out for credits); reaffirmed 2026-10-28 (no iOS purchases; firms buy on the web).
-- **Source:** Yavar's 2026-10-29 canonical-guidelines instruction (dated 10/28 ruling).
-- **Why:** Firm purchasing stays in the web billing flow rather than a device-store purchase flow.
-- **Scope:** iOS.
-- **Guard:** iOS `scripts/ci/check_billing_origin.sh`, extended to fail on `import StoreKit`, `SKPaymentQueue`, `Product.purchase`, `.storeProductsTask` or `SubscriptionStoreView`.
+- **Rule:** The iPhone and iPad app has no purchases (no StoreKit or Apple in-app purchase), and no links or calls to action to web purchase. The server sets `canBuy=false` on iOS. Firms buy on the web, but iOS must not direct them there to purchase.
+- **Yavar:** 2026-10-28 11:31 PM ET: no links or calls to action to web purchase in iOS (App Store 3.1.1/3.1.3); the server sets `canBuy=false` on iOS. This supersedes the 2026-10-22 2:11 AM ET link-out-for-credits direction.
+- **Source:** Yavar's Apple-side ruling relayed by the Mac agent, supplied in the PR #2550 follow-up instruction.
+- **Why:** Keep iOS purchasing behavior consistent with App Store 3.1.1/3.1.3 rather than directing people to web purchase.
+- **Scope:** iOS, including the server's iOS purchase capability.
+- **Guard:** iOS `scripts/ci/check_billing_origin.sh`, extended to fail on `import StoreKit`, `SKPaymentQueue`, `Product.purchase`, `.storeProductsTask` or `SubscriptionStoreView`. Purchase links/calls to action and server `canBuy=false` remain review-only; this entry does not assert runtime enforcement has shipped.
 
 ## R11 — "Ana", not "Ask Ana"
 - **Tier:** DEFAULT.
@@ -238,8 +243,9 @@ For an unmerged canonical change, always pass the explicit app worktree path: th
 - **Rule:**
   - Everyone on a matter sees the credits a review/tag job costs.
   - Review & Tag checks credits at start. A short job is kept as "Waiting for credits" with its settings and is never lost. It starts once credits are bought.
-  - Permitted users get a link right there to buy credits, see usage or upgrade.
-- **Yavar:** 2026-10-22 1:57 AM ET.
+  - On web, permitted users get a link right there to buy credits, see usage or upgrade. On iOS, R10 controls: no web-purchase links or calls to action, and the server sets `canBuy=false`.
+- **Yavar:** 2026-10-22 1:57 AM ET; iOS purchase-link direction superseded by the 2026-10-28 11:31 PM ET ruling in R10.
+- **Source:** For the iOS correction, Yavar's Apple-side ruling relayed by the Mac agent, supplied in the PR #2550 follow-up instruction (R10).
 - **Why:** A funding shortfall should be actionable without throwing away configured work.
 - **Scope:** both.
 - **Guard:** review-only.
@@ -403,6 +409,51 @@ For an unmerged canonical change, always pass the explicit app worktree path: th
 - **Scope:** both.
 - **Guard:** review-only.
 
+## R38 — Browse folders directly under Files search
+- **Tier:** DEFAULT.
+- **Rule:** The Files tab puts "Browse folders" at the top, directly under search, on iOS and web.
+- **Yavar:** 2026-10-28.
+- **Why:** Keep folder browsing easy to find directly below search.
+- **Source:** `litkit-ios#225`; Yavar's Apple-side ruling relayed by the Mac agent, supplied in the PR #2550 follow-up instruction.
+- **Scope:** both (iOS and web).
+- **Guard:** review-only.
+
+## R39 — Files reopens the last folder visited
+- **Tier:** DEFAULT.
+- **Rule:** Files reopens the last folder visited.
+- **Yavar:** before 10/24 (2026); exact date not supplied.
+- **Why:** Preserve the person's folder context when returning to Files.
+- **Source:** `litkit-ios#205`; Yavar's Apple-side ruling relayed by the Mac agent, supplied in the PR #2550 follow-up instruction.
+- **Scope:** iOS.
+- **Guard:** review-only.
+
+## R40 — Default matter in Channels and in-place product tabs
+- **Tier:** DEFAULT.
+- **Rule:** Channels opens to the default matter, and product tabs switch in place in web order.
+- **Yavar:** before 10/24 (2026); exact date not supplied.
+- **Why:** Keep the starting matter and product navigation consistent.
+- **Source:** `litkit-ios#190`; Yavar's Apple-side ruling relayed by the Mac agent, supplied in the PR #2550 follow-up instruction.
+- **Scope:** iOS.
+- **Guard:** review-only; R1 separately covers instant switching and the haptic.
+
+## R41 — Ana's icon is the LitCo logo
+- **Tier:** DEFAULT.
+- **Rule:** Ana's icon is the LitCo logo everywhere.
+- **Yavar:** before 10/24 (2026); exact date not supplied.
+- **Why:** Give Ana one consistent visual identity across surfaces.
+- **Source:** `#172`; Yavar's Apple-side ruling relayed by the Mac agent, supplied in the PR #2550 follow-up instruction.
+- **Scope:** both.
+- **Guard:** review-only.
+
+## R42 — No dollar costs on Review screens
+- **Tier:** DEFAULT.
+- **Rule:** Review screens show credits or drop the cost figure, never dollar costs. Only platform admins see raw cost. This is the explicit Review application of R9, including cost-so-far, the docs table and run cards.
+- **Yavar:** 2026-10-28 11:57 PM ET.
+- **Why:** Review costs should use credits rather than expose raw dollar costs to customers.
+- **Source:** Yavar's Apple-side ruling relayed by the Mac agent, supplied in the PR #2550 follow-up instruction.
+- **Scope:** both.
+- **Guard:** check-yavar-rules R9 (scoped) plus review; no separate R42 scanner. R9's runtime-formatting limitations still apply.
+
 ## Web guard implementation paths
 
 - Tier source: the numbered table in this file; `check.ts` reads it rather than maintaining a second severity list. DEFAULT hits warn; FIRM hits fail. Stale baseline entries follow their rule's tier; missing configured paths or invalid tier metadata fail as guard configuration errors.
@@ -414,4 +465,4 @@ For an unmerged canonical change, always pass the explicit app worktree path: th
 - Synthetic regression fixtures: `scripts/yavar-rules/check.test.ts`; scratch-copy mutation proof: `scripts/yavar-rules/mutation-proof.ts`; operating details: `scripts/yavar-rules/README.md`.
 - What counts as copy: string literals, template parts, JSX text and attribute strings. Skipped: comments, identifiers, imports, object keys, literal types, `case` labels, `===`/`!==` operands, HTTP header names, `safeLog`/`console` arguments, non-copy JSX attributes (`href`, `id`, `data-*` and the like), and `*.test.*`, `__tests__`, fixtures, e2e and stories.
 - Web guards: R1, R2, R3, R4, R5, R7, R9, R11, R12, R13, R14, R21. These lexical/AST checks do not prove runtime behavior or follow indirect data flow; those aspects remain review-only.
-- Web review-only: R6, R8, R15–R37. R10 is iOS-only, outside the web guard. The haptic and exhaustive surface-pair portions of R1 remain review-only on web.
+- Web review-only: R6, R8, R15–R38, R41. R10, R39 and R40 are iOS-scoped, outside the web guard. R42 uses the existing scoped R9 check plus review. The haptic and exhaustive surface-pair portions of R1 remain review-only on web.

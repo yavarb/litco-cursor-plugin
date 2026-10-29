@@ -23,7 +23,7 @@
   "scripts": {
     "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/litco-mcp.mjs --banner:js=\"#!/usr/bin/env node\nimport { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\" && chmod +x dist/litco-mcp.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "bash scripts/check-yavar-rules-sync.sh && vitest run",
     "check": "npm run typecheck && npm test && npm run build && git diff --exit-code dist"
   },
   "dependencies": {

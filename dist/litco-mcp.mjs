@@ -7291,10 +7291,10 @@ var ApiError = class extends Error {
 };
 function explainStatus(status, code, detail = "") {
   if (status === 401) {
-    return "Litco refused the token (unknown, revoked, expired, or no longer allowed by your firm). Create a new connection in LitKit \u2192 Settings \u2192 Connections, or run `litco-mcp login`.";
+    return "LitCo refused the token (unknown, revoked, expired, or no longer allowed by your firm). Create a new connection in LitCo \u2192 Settings \u2192 Connections, or run `litco-mcp login`.";
   }
   if (status === 403 && (code === "connection_token_forbidden" || code === "firm_api_key_forbidden")) {
-    return "A connection cannot use this part of LitKit (administration, exports, launches and adding people are browser-only).";
+    return "A connection cannot use this part of LitCo (administration, exports, launches and adding people are browser-only).";
   }
   if (status === 501 && code === "billing_not_updated") {
     return "Billing hasn't been updated yet to let connected agents work with entries. Use the Billing page for now.";
@@ -7303,7 +7303,7 @@ function explainStatus(status, code, detail = "") {
   if (status === 403) return "You don't have permission for this here, or it's outside the products or matters this connection covers.";
   if (status === 404) return "Not found, or not visible to you.";
   if (status === 429) return "Rate limited \u2014 wait a moment and retry.";
-  return `Litco returned HTTP ${status}${code ? ` (${code})` : ""}.`;
+  return `LitCo returned HTTP ${status}${code ? ` (${code})` : ""}.`;
 }
 var LitcoClient = class {
   constructor(baseUrl, credential, fetchImpl = fetch) {
@@ -7387,7 +7387,7 @@ async function login(input) {
   if (start.status !== 200) {
     const code = String(start.body.error ?? start.status);
     throw new Error(
-      code === "not_found" ? "Agent connections aren't turned on for this LitKit. Ask your Firm admin." : `Could not start sign-in (${code}).`
+      code === "not_found" ? "Agent connections aren't turned on for this LitCo instance. Ask your Firm admin." : `Could not start sign-in (${code}).`
     );
   }
   const deviceCode = String(start.body.device_code);
@@ -21708,7 +21708,7 @@ function registerTools(server, client, opts) {
   );
   tool(
     { name: "litkit_list_matters", product: "litkit", write: false },
-    "List the LitKit matters this connection can open.",
+    "List the LitCo Review matters this connection can open.",
     {},
     () => client.request("/api/matters")
   );
@@ -21919,27 +21919,27 @@ function registerTools(server, client, opts) {
   );
   tool(
     { name: "litspace_list_files", product: "litspace", write: false },
-    "List files in a matter's LitSpace vault (optionally inside a folder).",
-    { matterId: id("LitKit matter id"), parentId: external_exports.string().max(128).optional() },
+    "List files in a matter's LitCo Files vault (optionally inside a folder).",
+    { matterId: id("LitCo Review matter id"), parentId: external_exports.string().max(128).optional() },
     ({ matterId, parentId }) => client.request(`/api/litspace/matters/${seg(matterId)}/files`, { query: { parentId } })
   );
   tool(
     { name: "litspace_search", product: "litspace", write: false },
-    "Search a matter's LitSpace vault.",
-    { matterId: id("LitKit matter id"), q: external_exports.string().min(1).max(200) },
+    "Search a matter's LitCo Files vault.",
+    { matterId: id("LitCo Review matter id"), q: external_exports.string().min(1).max(200) },
     ({ matterId, q }) => client.request(`/api/litspace/matters/${seg(matterId)}/search`, { query: { q } })
   );
   tool(
     { name: "litspace_read_file", product: "litspace", write: false },
-    "Read a LitSpace file's content as text.",
+    "Read a file's content as text from LitCo Files.",
     { fileId: id("File id") },
     ({ fileId }) => client.request(`/api/litspace/files/${seg(fileId)}/content`, { text: true })
   );
   tool(
     { name: "litspace_upload_file", product: "litspace", write: true },
-    "Upload a local file into a matter's LitSpace vault (needs your repository write access).",
+    "Upload a local file into a matter's LitCo Files vault (needs your repository write access).",
     {
-      matterId: id("LitKit matter id"),
+      matterId: id("LitCo Review matter id"),
       path: external_exports.string().min(1).max(4096).describe("Local file path"),
       filename: external_exports.string().max(255).optional(),
       parentId: external_exports.string().max(128).optional().describe("Folder id")
@@ -22033,13 +22033,13 @@ async function main(argv = process.argv.slice(2)) {
     }
     if (cmd === "logout") {
       await clearCredential();
-      err("Forgot the saved token. Revoke the connection in LitKit \u2192 Settings \u2192 Connections to stop it everywhere.");
+      err("Forgot the saved token. Revoke the connection in LitCo \u2192 Settings \u2192 Connections to stop it everywhere.");
       return 0;
     }
     const credential = await resolveCredential();
     if (!credential) {
       throw new ConfigError(
-        "No Litco credential. Set LITCO_CONNECTION_TOKEN (from LitKit \u2192 Settings \u2192 Connections) or run `litco-mcp login`."
+        "No LitCo credential. Set LITCO_CONNECTION_TOKEN (from LitCo \u2192 Settings \u2192 Connections) or run `litco-mcp login`."
       );
     }
     const client = new LitcoClient(baseUrl, credential);

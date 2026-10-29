@@ -1,11 +1,11 @@
-// Credentials and the HTTP client for the Litco API.
+// Credentials and the HTTP client for the LitCo API.
 //
 // Which credential, in order:
 //   1. LITCO_CONNECTION_TOKEN — your own connection token (`lku_…`), from
-//      Settings → Connections in LitKit, or written by `litco-mcp login`.
-//      It acts as YOU: LitKit, LitLex and LitSpace, inside what your firm's
+//      Settings → Connections in LitCo, or written by `litco-mcp login`.
+//      It acts as YOU: LitCo, LitCo Research and LitCo Files, inside what your firm's
 //      admin allows and what you chose when you created it.
-//   2. LITCO_API_KEY — a firm API key (`lkf_…`). LitLex research only.
+//   2. LITCO_API_KEY — a firm API key (`lkf_…`). LitCo Research only.
 //   3. The credentials file `litco-mcp login` writes
 //      (~/.config/litco/connection.json, mode 0600).
 //
@@ -125,10 +125,10 @@ export class ApiError extends Error {
 /** Human explanation of a refusal, so the agent can tell its person what to do. */
 export function explainStatus(status: number, code: string, detail = ""): string {
   if (status === 401) {
-    return "Litco refused the token (unknown, revoked, expired, or no longer allowed by your firm). Create a new connection in LitKit → Settings → Connections, or run `litco-mcp login`.";
+    return "LitCo refused the token (unknown, revoked, expired, or no longer allowed by your firm). Create a new connection in LitCo → Settings → Connections, or run `litco-mcp login`.";
   }
   if (status === 403 && (code === "connection_token_forbidden" || code === "firm_api_key_forbidden")) {
-    return "A connection cannot use this part of LitKit (administration, exports, launches and adding people are browser-only).";
+    return "A connection cannot use this part of LitCo (administration, exports, launches and adding people are browser-only).";
   }
   if (status === 501 && code === "billing_not_updated") {
     return "Billing hasn't been updated yet to let connected agents work with entries. Use the Billing page for now.";
@@ -139,7 +139,7 @@ export function explainStatus(status: number, code: string, detail = ""): string
   if (status === 403) return "You don't have permission for this here, or it's outside the products or matters this connection covers.";
   if (status === 404) return "Not found, or not visible to you.";
   if (status === 429) return "Rate limited — wait a moment and retry.";
-  return `Litco returned HTTP ${status}${code ? ` (${code})` : ""}.`;
+  return `LitCo returned HTTP ${status}${code ? ` (${code})` : ""}.`;
 }
 
 export interface RequestOptions {

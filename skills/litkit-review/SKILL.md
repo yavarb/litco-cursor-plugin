@@ -1,16 +1,16 @@
 ---
 name: litco-litkit-review
-description: Find, read and code documents in a LitKit matter — search, read text and families, tag, take notes, and post in matter threads. Use for document review, fact finding, or summarizing evidence in a matter.
+description: Find, read and code documents in a LitCo Review matter — search, read text and families, tag, take notes, and post in matter threads. Use for document review, fact finding, or summarizing evidence in a matter.
 ---
 
-# LitKit document review
+# LitCo Review
 
 Reads: `litkit_list_matters`, `litkit_search_documents`, `litkit_get_document`,
 `litkit_document_text`, `litkit_document_family`, `litkit_list_tags`,
 `litkit_list_threads`, `litkit_get_thread`, `litkit_list_review_jobs`.
 
 Writes (applied immediately, under the person's name, exactly as if they did
-it in LitKit): `litkit_tag_document`, `litkit_untag_document`,
+it in LitCo Review): `litkit_tag_document`, `litkit_untag_document`,
 `litkit_save_note`, `litkit_post_to_thread`.
 
 ## Workflow

@@ -1,11 +1,11 @@
-// litco-mcp — the Litco agent connector.
+// litco-mcp — the LitCo agent connector.
 //
 //   litco-mcp               run the stdio MCP server (what Cursor / Claude Code start)
 //   litco-mcp login [--client cursor|claude-code|grokbot|other] [--name "…"]
-//   litco-mcp logout        forget the saved connection token (revoke it in LitKit too)
+//   litco-mcp logout        forget the saved connection token (revoke it in LitCo too)
 //   litco-mcp whoami        show who the connection acts as
 //
-// Env: LITCO_CONNECTION_TOKEN (lku_…) or LITCO_API_KEY (lkf_…, LitLex only),
+// Env: LITCO_CONNECTION_TOKEN (lku_…) or LITCO_API_KEY (lkf_…, LitCo Research only),
 // LITCO_API_BASE_URL (default https://app.litco.ai), LITCO_READ_ONLY=1.
 // stdout belongs to the MCP protocol in server mode: messages go to stderr.
 
@@ -41,13 +41,13 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     }
     if (cmd === "logout") {
       await clearCredential();
-      err("Forgot the saved token. Revoke the connection in LitKit → Settings → Connections to stop it everywhere.");
+      err("Forgot the saved token. Revoke the connection in LitCo → Settings → Connections to stop it everywhere.");
       return 0;
     }
     const credential = await resolveCredential();
     if (!credential) {
       throw new ConfigError(
-        "No Litco credential. Set LITCO_CONNECTION_TOKEN (from LitKit → Settings → Connections) or run `litco-mcp login`.",
+        "No LitCo credential. Set LITCO_CONNECTION_TOKEN (from LitCo → Settings → Connections) or run `litco-mcp login`.",
       );
     }
     const client = new LitcoClient(baseUrl, credential);

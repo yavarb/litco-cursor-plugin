@@ -1,7 +1,7 @@
 {
   "name": "litco-agent-connector",
   "version": "0.1.0",
-  "description": "Connect Claude Code, Cursor and other MCP agents to LitKit, LitLex and LitSpace with your own Litco connection token.",
+  "description": "Connect Claude Code, Cursor and other MCP agents to LitCo Review, LitCo Research and LitCo Files with your own LitCo connection token.",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {

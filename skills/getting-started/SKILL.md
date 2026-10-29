@@ -1,12 +1,12 @@
 ---
 name: litco-getting-started
-description: Connect this agent to Litco (LitKit, LitLex, LitSpace) and check what the connection can reach. Use when Litco tools fail with an auth error, or before first use.
+description: Connect this agent to LitCo Review, LitCo Research and LitCo Files and check what the connection can reach. Use when LitCo tools fail with an auth error, or before first use.
 ---
 
-# Getting started with Litco
+# Getting started with LitCo
 
 The `litco` MCP server acts as **one person** — whoever created the connection.
-It can do only what that person can do in LitKit in the browser, inside what
+It can do only what that person can do in LitCo in the browser, inside what
 their firm's admin allows and the products and matters chosen for this
 connection. Administration, exports, launching review runs and adding people
 are never available to an agent.
@@ -19,13 +19,13 @@ Pick one:
    `node <plugin>/dist/litco-mcp.mjs login --client cursor` (or `--client claude-code`).
    Open the link it prints, check the code, choose products and matters, and approve.
    The token is saved to `~/.config/litco/connection.json` (readable only by you).
-2. **Paste a token:** in LitKit open **Settings → Connections**, create a
+2. **Paste a token:** in LitCo open **Settings → Connections**, create a
    connection, and put the token in your environment as
    `LITCO_CONNECTION_TOKEN=lku_…`.
-3. **LitLex only, firm key:** `LITCO_API_KEY=lkf_…` from your Firm admin
+3. **LitCo Research only, firm key:** `LITCO_API_KEY=lkf_…` from your Firm admin
    reaches case-law research and nothing else.
 
-Set `LITCO_API_BASE_URL` if your firm's LitKit is not `https://app.litco.ai`.
+Set `LITCO_API_BASE_URL` if your firm's LitCo address is not `https://app.litco.ai`.
 
 ## Check
 

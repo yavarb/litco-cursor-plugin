@@ -1,10 +1,10 @@
 // `litco-mcp login` — sign in without copying a token (RFC 8628 device flow).
 //
-// 1. Ask LitKit for a device code and a short user code.
+// 1. Ask LitCo for a device code and a short user code.
 // 2. Show the person the approval link; they approve in their own browser
-//    (signed in to LitKit with their second factor) and choose which
+//    (signed in to LitCo with their second factor) and choose which
 //    products and matters this connection may reach.
-// 3. Poll until LitKit hands over the connection token (once), then save it
+// 3. Poll until LitCo hands over the connection token (once), then save it
 //    to ~/.config/litco/connection.json (mode 0600).
 
 import { postForm, saveCredential } from "./client.js";
@@ -34,7 +34,7 @@ export async function login(input: {
     const code = String(start.body.error ?? start.status);
     throw new Error(
       code === "not_found"
-        ? "Agent connections aren't turned on for this LitKit. Ask your Firm admin."
+        ? "Agent connections aren't turned on for this LitCo instance. Ask your Firm admin."
         : `Could not start sign-in (${code}).`,
     );
   }

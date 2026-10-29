@@ -1,16 +1,16 @@
 ---
 name: litco-litspace-files
-description: Browse, search, read and upload files in a matter's LitSpace vault (pleadings, drafts, work product). Use when the person refers to matter files, drafts or the vault.
+description: Browse, search, read and upload files in a matter's LitCo Files vault (pleadings, drafts, work product). Use when the person refers to matter files, drafts or the vault.
 ---
 
-# LitSpace files
+# LitCo Files
 
 Tools: `litspace_list_files`, `litspace_search`, `litspace_read_file`,
 `litspace_upload_file`.
 
 ## Workflow
 
-1. `litco_whoami` → the matter id (LitSpace tools take the **LitKit** matter id).
+1. `litco_whoami` → the matter id (LitCo Files tools take the **LitCo Review** matter id).
 2. `litspace_list_files` (optionally `parentId` for a folder) or
    `litspace_search` with `q`.
 3. `litspace_read_file` with a file id to read its text.

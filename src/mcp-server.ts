@@ -1,6 +1,6 @@
-// stdio MCP server → Litco HTTP API with your connection token.
+// stdio MCP server → LitCo HTTP API with your connection token.
 //
-// Every tool is a thin call to one LitKit / LitLex / LitSpace route. The server
+// Every tool is a thin call to one LitCo Review / LitCo Research / LitCo Files route. The server
 // decides what the token may do (your live roles ∩ your firm's policy ∩ the
 // products and matters you chose); this shim adds nothing and hides nothing,
 // except one local preference: LITCO_READ_ONLY=1 (or --read-only) leaves the
@@ -10,7 +10,7 @@
 // Billing entry tools reach your own time and expenses through the same
 // token (a token pinned to matters is refused for them).
 //
-// A firm API key (lkf_) reaches LitLex research only, so only the LitLex tools
+// A firm API key (lkf_) reaches LitCo Research only, so only the LitCo Research tools
 // are registered for it.
 
 import { readFile, stat } from "node:fs/promises";
@@ -91,10 +91,10 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
     () => client.request("/api/me"),
   );
 
-  // ── LitKit: reads ─────────────────────────────────────────────────────────
+  // ── LitCo Review: reads ─────────────────────────────────────────────────────────
   tool(
     { name: "litkit_list_matters", product: "litkit", write: false },
-    "List the LitKit matters this connection can open.",
+    "List the LitCo Review matters this connection can open.",
     {},
     () => client.request("/api/matters"),
   );
@@ -156,7 +156,7 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
     ({ matterId }) => client.request(`/api/matters/${seg(matterId)}/review-jobs`),
   );
 
-  // ── LitKit: writes (applied directly, as in the browser) ──────────────────
+  // ── LitCo Review: writes (applied directly, as in the browser) ──────────────────
   tool(
     { name: "litkit_tag_document", product: "litkit", write: true },
     "Apply a tag to a document (optionally to its attachments or whole family).",
@@ -322,31 +322,31 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
     (body) => entries("entry_change_undo", body),
   );
 
-  // ── LitSpace ──────────────────────────────────────────────────────────────
+  // ── LitCo Files ──────────────────────────────────────────────────────────────
   tool(
     { name: "litspace_list_files", product: "litspace", write: false },
-    "List files in a matter's LitSpace vault (optionally inside a folder).",
-    { matterId: id("LitKit matter id"), parentId: z.string().max(128).optional() },
+    "List files in a matter's LitCo Files vault (optionally inside a folder).",
+    { matterId: id("LitCo Review matter id"), parentId: z.string().max(128).optional() },
     ({ matterId, parentId }) =>
       client.request(`/api/litspace/matters/${seg(matterId)}/files`, { query: { parentId } }),
   );
   tool(
     { name: "litspace_search", product: "litspace", write: false },
-    "Search a matter's LitSpace vault.",
-    { matterId: id("LitKit matter id"), q: z.string().min(1).max(200) },
+    "Search a matter's LitCo Files vault.",
+    { matterId: id("LitCo Review matter id"), q: z.string().min(1).max(200) },
     ({ matterId, q }) => client.request(`/api/litspace/matters/${seg(matterId)}/search`, { query: { q } }),
   );
   tool(
     { name: "litspace_read_file", product: "litspace", write: false },
-    "Read a LitSpace file's content as text.",
+    "Read a file's content as text from LitCo Files.",
     { fileId: id("File id") },
     ({ fileId }) => client.request(`/api/litspace/files/${seg(fileId)}/content`, { text: true }),
   );
   tool(
     { name: "litspace_upload_file", product: "litspace", write: true },
-    "Upload a local file into a matter's LitSpace vault (needs your repository write access).",
+    "Upload a local file into a matter's LitCo Files vault (needs your repository write access).",
     {
-      matterId: id("LitKit matter id"),
+      matterId: id("LitCo Review matter id"),
       path: z.string().min(1).max(4096).describe("Local file path"),
       filename: z.string().max(255).optional(),
       parentId: z.string().max(128).optional().describe("Folder id"),
@@ -365,7 +365,7 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
     },
   );
 
-  // ── LitLex (research; read-only by construction) ──────────────────────────
+  // ── LitCo Research (research; read-only by construction) ──────────────────────────
   tool(
     { name: "litlex_search", product: "litlex", write: false },
     "Search published case law.",

@@ -1,23 +1,23 @@
-# Litco agent connector — LitKit, LitLex & LitSpace for Cursor, Claude Code and any MCP agent
+# LitCo agent connector — Review, Research & Files for Cursor, Claude Code and any MCP agent
 
-This connector lets your AI agent work in **LitKit** (document review), **LitLex** (case law) and **LitSpace** (matter files) **as you**.
+This connector lets your AI agent work in **LitCo Review** (document review), **LitCo Research** (case law) and **LitCo Files** (matter files) **as you**.
 
-It is a small stdio [MCP](https://modelcontextprotocol.io) server that calls the Litco API with your own connection token. Every request is checked on the server against:
+It is a small stdio [MCP](https://modelcontextprotocol.io) server that calls the LitCo API with your own connection token. Every request is checked on the server against:
 - your live roles;
 - your firm's agent-connection policy;
 - the products and matters you chose when you created the connection.
 
-The agent can do only what you can do in LitKit in the browser. Administration, exports, launching review runs and adding people are browser-only, so no agent can do them. Every action is audited as you, through the connection.
+The agent can do only what you can do in LitCo in the browser. Administration, exports, launching review runs and adding people are browser-only, so no agent can do them. Every action is audited as you, through the connection.
 
-Every agent your Firm admin enables gets the same tools and the same access. There is no per-agent read-only mode on the server, and writes (tag, note, thread post, upload) take effect immediately, as in LitKit.
+Every agent your Firm admin enables gets the same tools and the same access. There is no per-agent read-only mode on the server, and writes (tag, note, thread post, upload) take effect immediately, as in LitCo.
 
 ## Credentials
 
 | Variable | What | Reaches |
 |---|---|---|
-| `LITCO_CONNECTION_TOKEN` | Your connection token, `lku_…` (LitKit → **Settings → Connections**, or `litco-mcp login`) | LitKit, LitLex and LitSpace, as you, within your firm's policy |
-| `LITCO_API_KEY` | A firm API key, `lkf_…`, from your Firm admin | LitLex case-law research only |
-| `LITCO_API_BASE_URL` | Your firm's LitKit address (default `https://app.litco.ai`) | — |
+| `LITCO_CONNECTION_TOKEN` | Your connection token, `lku_…` (LitCo → **Settings → Connections**, or `litco-mcp login`) | LitCo Review, LitCo Research and LitCo Files, as you, within your firm's policy |
+| `LITCO_API_KEY` | A firm API key, `lkf_…`, from your Firm admin | LitCo Research case-law research only |
+| `LITCO_API_BASE_URL` | Your firm's LitCo address (default `https://app.litco.ai`) | — |
 | `LITCO_READ_ONLY=1` | Optional. Leaves the write tools out of **this install** | — |
 
 `litco-mcp login` saves the token to `~/.config/litco/connection.json` with mode 0600. Nothing else is written anywhere.
@@ -27,7 +27,7 @@ Every agent your Firm admin enables gets the same tools and the same access. The
 ## Install
 
 ### Cursor
-1. Install the **Litco** plugin from the Cursor marketplace, or add this repository as a plugin.
+1. Install the **LitCo** plugin from the Cursor marketplace, or add this repository as a plugin.
 2. In a terminal, run:
    `npx -y github:yavarb/litco-cursor-plugin login --client cursor`
    (or `node <plugin-dir>/dist/litco-mcp.mjs login --client cursor`).
@@ -60,16 +60,16 @@ Personal mode uses the same token. Set `LITCO_CONNECTION_TOKEN=lku_…` (and `LI
 | Product | Read | Write (direct) |
 |---|---|---|
 | Identity | `litco_whoami` | — |
-| LitKit | `litkit_list_matters`, `litkit_search_documents`, `litkit_get_document`, `litkit_document_text`, `litkit_document_family`, `litkit_list_tags`, `litkit_list_threads`, `litkit_get_thread`, `litkit_list_review_jobs` | `litkit_tag_document`, `litkit_untag_document`, `litkit_save_note`, `litkit_post_to_thread` |
-| LitSpace | `litspace_list_files`, `litspace_search`, `litspace_read_file` | `litspace_upload_file` |
+| LitCo Review | `litkit_list_matters`, `litkit_search_documents`, `litkit_get_document`, `litkit_document_text`, `litkit_document_family`, `litkit_list_tags`, `litkit_list_threads`, `litkit_get_thread`, `litkit_list_review_jobs` | `litkit_tag_document`, `litkit_untag_document`, `litkit_save_note`, `litkit_post_to_thread` |
+| LitCo Files | `litspace_list_files`, `litspace_search`, `litspace_read_file` | `litspace_upload_file` |
 | Billing | `billing_list_entries`, `billing_search_entries`, `billing_get_entry` | `billing_create_entry`, `billing_update_entry`, `billing_move_entries`, `billing_copy_entry`, `billing_delete_entries`, `billing_undo_change` |
-| LitLex | `litlex_search`, `litlex_get_opinion`, `litlex_citator`, `litlex_resolve_citations`, `litlex_check_quote`, `litlex_statute` | — |
+| LitCo Research | `litlex_search`, `litlex_get_opinion`, `litlex_citator`, `litlex_resolve_citations`, `litlex_check_quote`, `litlex_statute` | — |
 
-With a firm key (`lkf_`), only the LitLex tools are registered.
+With a firm key (`lkf_`), only the LitCo Research tools are registered.
 
 Billing tools work on your own time and expense entries (and everyone's on a matter you administer for billing). A change to more than one entry, a delete, or a move to another matter first comes back as a dry run with a preview and a `confirm_token`; call again with the same arguments and that token to apply it. Every applied change returns a `change_id` that `billing_undo_change` reverts. A connection pinned to matters cannot reach Billing.
 
-Skills in `skills/` teach the agent the workflows: getting started, LitLex research, LitKit review and LitSpace files.
+Skills in `skills/` teach the agent the workflows: getting started, LitCo Research, LitCo Review and LitCo Files.
 
 ## Commands
 
@@ -77,12 +77,12 @@ Skills in `skills/` teach the agent the workflows: getting started, LitLex resea
 litco-mcp                 run the stdio MCP server
 litco-mcp login [--client cursor|claude-code|grokbot|other] [--name "…"]
 litco-mcp whoami          show who the connection acts as
-litco-mcp logout          forget the saved token (revoke it in LitKit too)
+litco-mcp logout          forget the saved token (revoke it in LitCo too)
 ```
 
 ## Revoking
 
-Revoke a connection in LitKit → **Settings → Connections**. Your Firm admin can revoke any connection, or all of a person's connections, from **Admin → Billing → API keys**.
+Revoke a connection in LitCo → **Settings → Connections**. Your Firm admin can revoke any connection, or all of a person's connections, from **Admin → Billing → API keys**.
 
 A connection also stops working by itself in any of these cases:
 - it expires (at most a year; your firm may set less);

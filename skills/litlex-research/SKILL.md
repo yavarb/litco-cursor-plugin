@@ -1,9 +1,9 @@
 ---
 name: litco-litlex-research
-description: Research case law with LitLex — search opinions, read them, check how later courts treated them, resolve citations and verify quotations. Use for any legal-research question or before citing a case.
+description: Research case law with LitCo Research — search opinions, read them, check how later courts treated them, resolve citations and verify quotations. Use for any legal-research question or before citing a case.
 ---
 
-# LitLex research
+# LitCo Research
 
 Tools: `litlex_search`, `litlex_get_opinion`, `litlex_citator`,
 `litlex_resolve_citations`, `litlex_check_quote`, `litlex_statute`.
@@ -22,7 +22,7 @@ Tools: `litlex_search`, `litlex_get_opinion`, `litlex_citator`,
 
 ## Rules
 
-- Never invent a citation, pin cite, or quotation. If LitLex can't find it,
+- Never invent a citation, pin cite, or quotation. If LitCo Research can't find it,
   say so.
 - Give the opinion id and citation for every authority you rely on, so the
   person can open it.

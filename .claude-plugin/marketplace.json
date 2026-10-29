@@ -1,12 +1,12 @@
 {
   "name": "litco",
-  "owner": { "name": "Litco", "email": "support@litco.ai" },
-  "metadata": { "description": "Litco plugins for Claude Code." },
+  "owner": { "name": "LitCo", "email": "support@litco.ai" },
+  "metadata": { "description": "LitCo plugins for Claude Code." },
   "plugins": [
     {
       "name": "litco",
       "source": "./",
-      "description": "LitKit, LitLex and LitSpace from Claude Code, as yourself, with your own Litco connection."
+      "description": "LitCo Review, LitCo Research and LitCo Files from Claude Code, as yourself, with your own LitCo connection."
     }
   ]
 }

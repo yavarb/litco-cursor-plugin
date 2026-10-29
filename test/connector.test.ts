@@ -92,7 +92,7 @@ describe("tool registry", () => {
   const conn = new LitcoClient("https://x.litco.ai", { kind: "connection", token: LKU, source: "file" });
   const firm = new LitcoClient("https://x.litco.ai", { kind: "firm_key", token: LKF, source: "env:LITCO_API_KEY" });
 
-  it("a connection gets LitKit, LitSpace and LitLex — writes included by default", () => {
+  it("a connection gets LitCo Review, LitCo Files and LitCo Research — writes included by default", () => {
     const { server, names } = fakeServer();
     const specs = registerTools(server, conn, { readOnly: false });
     expect(names).toContain("litkit_tag_document");
@@ -109,7 +109,7 @@ describe("tool registry", () => {
     expect(names).toContain("litkit_search_documents");
   });
 
-  it("a firm key (lkf_) gets LitLex only", () => {
+  it("a firm key (lkf_) gets LitCo Research only", () => {
     const { server, names } = fakeServer();
     registerTools(server, firm, { readOnly: false });
     expect(names.length).toBeGreaterThan(0);
@@ -163,7 +163,7 @@ describe("Billing entry tools", () => {
     expect(names.some((n) => n.startsWith("billing_"))).toBe(false);
   });
 
-  it("copies an entry as a dry run, then applies with the confirm token (Halvorsen fixture)", async () => {
+  it("copies an entry as a dry run, then applies with the confirm token", async () => {
     const calls: Array<{ url: string; body: unknown }> = [];
     const handlers = capture((async (url: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body));
@@ -174,7 +174,7 @@ describe("Billing entry tools", () => {
           preview: [1, 2, 3, 4, 5].map((d) => ({ before: null, after: { date: `2026-10-0${d + 3}`, hours: "8.0", status: "draft" } })),
           confirm_token: "ct_fixture",
           expires_at: "2026-10-09T12:10:00Z",
-          summary: "Create 5 draft time entries on Halvorsen v. Quillmark, Oct 4–8, 8.0h each",
+          summary: "Create 5 draft time entries on the example matter, Oct 4–8, 8.0h each",
         });
       }
       return json({ change_id: "chg_1", created: 5 });

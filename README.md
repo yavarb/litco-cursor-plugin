@@ -60,12 +60,14 @@ Personal mode uses the same token. Set `LITCO_CONNECTION_TOKEN=lku_…` (and `LI
 | Product | Read | Write (direct) |
 |---|---|---|
 | Identity | `litco_whoami` | — |
-| LitCo Review | `litkit_list_matters`, `litkit_search_documents`, `litkit_get_document`, `litkit_document_text`, `litkit_document_family`, `litkit_list_tags`, `litkit_list_threads`, `litkit_get_thread`, `litkit_list_review_jobs` | `litkit_tag_document`, `litkit_untag_document`, `litkit_save_note`, `litkit_post_to_thread` |
+| LitCo Review | `litkit_list_matters`, `litkit_search_documents`, `litkit_get_document`, `litkit_document_text`, `litkit_document_family`, `litkit_list_tags`, `litkit_list_threads`, `litkit_get_thread`, `litkit_list_review_jobs`, `litkit_get_coding` | `litkit_set_coding`, `litkit_tag_document`, `litkit_untag_document`, `litkit_save_note`, `litkit_post_to_thread` |
 | LitCo Files | `litspace_list_files`, `litspace_search`, `litspace_read_file` | `litspace_upload_file` |
 | Billing | `billing_list_entries`, `billing_search_entries`, `billing_get_entry` | `billing_create_entry`, `billing_update_entry`, `billing_move_entries`, `billing_copy_entry`, `billing_delete_entries`, `billing_undo_change` |
 | LitCo Research | `litlex_search`, `litlex_get_opinion`, `litlex_citator`, `litlex_resolve_citations`, `litlex_check_quote`, `litlex_statute` | — |
 
 With a firm key (`lkf_`), only the LitCo Research tools are registered.
+
+A document's responsiveness (Responsive / Not Responsive / Unsure), privilege and confidentiality are its coding: set or clear them with `litkit_set_coding`. LitCo refuses responsiveness tags through `litkit_tag_document`.
 
 Billing tools work on your own time and expense entries (and everyone's on a matter you administer for billing). A change to more than one entry, a delete, or a move to another matter first comes back as a dry run with a preview and a `confirm_token`; call again with the same arguments and that token to apply it. Every applied change returns a `change_id` that `billing_undo_change` reverts. A connection pinned to matters cannot reach Billing.
 

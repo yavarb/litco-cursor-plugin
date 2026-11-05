@@ -24,6 +24,9 @@ type ToolResult = { content: Array<{ type: "text"; text: string }>; isError?: bo
 
 const MAX_TEXT_CHARS = 200_000;
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+// One page of a file's text: half the result cap, so the JSON envelope and
+// escaping never push a page past MAX_TEXT_CHARS.
+const READ_FILE_PAGE_CHARS = 100_000;
 
 function ok(data: unknown): ToolResult {
   let text = typeof data === "string" ? data : JSON.stringify(data, null, 2);
@@ -375,9 +378,15 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
   );
   tool(
     { name: "litspace_read_file", product: "litspace", write: false },
-    "Read a file's content as text from LitCo Files.",
-    { fileId: id("File id") },
-    ({ fileId }) => client.request(`/api/litspace/files/${seg(fileId)}/content`, { text: true }),
+    "Read a LitCo Files document's extracted text (never its bytes). Long files come in pages: when `nextOffset` is not null, call again with that offset. `textStatus` is ready, empty, pending (not indexed yet) or failed.",
+    {
+      fileId: id("File id (litspaceFileId from litspace_list_files, or documentId from litspace_search)"),
+      offset: z.number().int().min(0).optional().describe("Character offset to start at (from nextOffset)"),
+    },
+    ({ fileId, offset }) =>
+      client.request(`/api/litspace/files/${seg(fileId)}/text`, {
+        query: { offset: offset ? String(offset) : undefined, limit: String(READ_FILE_PAGE_CHARS) },
+      }),
   );
   tool(
     { name: "litspace_upload_file", product: "litspace", write: true },

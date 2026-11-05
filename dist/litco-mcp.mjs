@@ -21664,6 +21664,7 @@ var StdioServerTransport = class {
 // src/mcp-server.ts
 var MAX_TEXT_CHARS = 2e5;
 var MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+var READ_FILE_PAGE_CHARS = 1e5;
 function ok(data) {
   let text = typeof data === "string" ? data : JSON.stringify(data, null, 2);
   if (text.length > MAX_TEXT_CHARS) {
@@ -21963,9 +21964,14 @@ function registerTools(server, client, opts) {
   );
   tool(
     { name: "litspace_read_file", product: "litspace", write: false },
-    "Read a file's content as text from LitCo Files.",
-    { fileId: id("File id") },
-    ({ fileId }) => client.request(`/api/litspace/files/${seg(fileId)}/content`, { text: true })
+    "Read a LitCo Files document's extracted text (never its bytes). Long files come in pages: when `nextOffset` is not null, call again with that offset. `textStatus` is ready, empty, pending (not indexed yet) or failed.",
+    {
+      fileId: id("File id (litspaceFileId from litspace_list_files, or documentId from litspace_search)"),
+      offset: external_exports.number().int().min(0).optional().describe("Character offset to start at (from nextOffset)")
+    },
+    ({ fileId, offset }) => client.request(`/api/litspace/files/${seg(fileId)}/text`, {
+      query: { offset: offset ? String(offset) : void 0, limit: String(READ_FILE_PAGE_CHARS) }
+    })
   );
   tool(
     { name: "litspace_upload_file", product: "litspace", write: true },

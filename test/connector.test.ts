@@ -213,6 +213,73 @@ describe("Billing entry tools", () => {
   });
 });
 
+describe("LitCo Review coding tools", () => {
+  type Handler = (args: Record<string, unknown>) => Promise<{ content: Array<{ text: string }>; isError?: boolean }>;
+  function capture(fetchImpl: typeof fetch, readOnly = false) {
+    const handlers = new Map<string, Handler>();
+    const server = { registerTool: (name: string, _meta: unknown, cb: Handler) => handlers.set(name, cb) } as never;
+    const client = new LitcoClient("https://x.litco.ai", { kind: "connection", token: LKU, source: "file" }, fetchImpl);
+    registerTools(server, client, { readOnly });
+    return handlers;
+  }
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  const TAG = "5f0c3a52-7d2e-4f7b-9a1e-2b6c8d4e0f11";
+  const CODING_TAG_MESSAGE = "Responsiveness is set in coding. Change the document's responsiveness call instead.";
+
+  it("tagging with a responsiveness tag shows the server's reason, keeping the code (prod 2026-11-04)", async () => {
+    const handlers = capture((async () => json({ error: "coding_tag", message: CODING_TAG_MESSAGE }, 409)) as never);
+    const r = await handlers.get("litkit_tag_document")!({ documentId: "doc_1", tagId: TAG });
+    expect(r.isError).toBe(true);
+    expect(r.content[0]!.text).toBe(`LitCo returned HTTP 409 (coding_tag): ${CODING_TAG_MESSAGE}`);
+    expect(r.content[0]!.text).not.toContain(LKU);
+    expect(r.content[0]!.text).not.toContain(TAG);
+  });
+
+  it("a connection gets litkit_get_coding and litkit_set_coding; read-only keeps only the read; a firm key gets neither", () => {
+    const all = capture((async () => json({})) as never);
+    expect(all.has("litkit_get_coding")).toBe(true);
+    expect(all.has("litkit_set_coding")).toBe(true);
+    const ro = capture((async () => json({})) as never, true);
+    expect(ro.has("litkit_get_coding")).toBe(true);
+    expect(ro.has("litkit_set_coding")).toBe(false);
+    const { server, names } = fakeServer();
+    registerTools(server, new LitcoClient("https://x.litco.ai", { kind: "firm_key", token: LKF, source: "env:LITCO_API_KEY" }), {
+      readOnly: false,
+    });
+    expect(names.some((n) => n.includes("coding"))).toBe(false);
+  });
+
+  it("reads coding with GET and sets or clears responsiveness with PUT", async () => {
+    const calls: Array<{ url: string; method: string; body: unknown }> = [];
+    const handlers = capture((async (url: string, init: RequestInit) => {
+      calls.push({ url, method: String(init.method), body: init.body === undefined ? undefined : JSON.parse(String(init.body)) });
+      return json({ ok: true });
+    }) as never);
+    await handlers.get("litkit_get_coding")!({ documentId: "doc_1" });
+    const set = await handlers.get("litkit_set_coding")!({ documentId: "doc_1", responsiveness: "unsure", note: "needs a second look" });
+    expect(set.isError).toBeUndefined();
+    await handlers.get("litkit_set_coding")!({ documentId: "doc_1", responsiveness: null, reason: "coded in error" });
+    expect(calls).toEqual([
+      { url: "https://x.litco.ai/api/documents/doc_1/coding", method: "GET", body: undefined },
+      { url: "https://x.litco.ai/api/documents/doc_1/coding", method: "PUT", body: { responsiveness: "unsure", note: "needs a second look" } },
+      { url: "https://x.litco.ai/api/documents/doc_1/coding", method: "PUT", body: { responsiveness: null, reason: "coded in error" } },
+    ]);
+  });
+
+  it("set_coding needs a responsiveness, privilege or confidentiality call before it calls LitCo", async () => {
+    let called = false;
+    const handlers = capture((async () => {
+      called = true;
+      return json({});
+    }) as never);
+    const r = await handlers.get("litkit_set_coding")!({ documentId: "doc_1", note: "just a note" });
+    expect(r.isError).toBe(true);
+    expect(r.content[0]!.text).toMatch(/responsiveness, privilege or confidentiality/);
+    expect(called).toBe(false);
+  });
+});
+
 describe("login (device flow)", () => {
   it("polls through pending and slow_down, then saves the token", async () => {
     const replies = [

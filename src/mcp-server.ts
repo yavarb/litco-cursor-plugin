@@ -133,7 +133,7 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
   );
   tool(
     { name: "litkit_list_tags", product: "litkit", write: false },
-    "The tags defined on a matter (ids are needed to tag documents).",
+    "The tags defined on a matter (ids are needed to tag documents). Responsiveness tags (Responsive / Not Responsive / Unsure) are not applied by tagging: set them with litkit_set_coding.",
     { matterId: id("Matter id") },
     ({ matterId }) => client.request("/api/tags", { query: { matterId } }),
   );
@@ -155,11 +155,17 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
     { matterId: id("Matter id") },
     ({ matterId }) => client.request(`/api/matters/${seg(matterId)}/review-jobs`),
   );
+  tool(
+    { name: "litkit_get_coding", product: "litkit", write: false },
+    "A document's coding: its responsiveness, privilege and confidentiality calls (per review pass) and their history.",
+    { documentId: id("Document id") },
+    ({ documentId }) => client.request(`/api/documents/${seg(documentId)}/coding`),
+  );
 
   // ── LitCo Review: writes (applied directly, as in the browser) ──────────────────
   tool(
     { name: "litkit_tag_document", product: "litkit", write: true },
-    "Apply a tag to a document (optionally to its attachments or whole family).",
+    "Apply a tag to a document (optionally to its attachments or whole family). Not for responsiveness: LitCo refuses responsiveness tags here (coding_tag); use litkit_set_coding.",
     {
       documentId: id("Document id"),
       tagId: z.string().uuid().describe("Tag id from litkit_list_tags"),
@@ -175,6 +181,32 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
     ({ documentId, tagId }) =>
       client.request(`/api/documents/${seg(documentId)}/tags`, { method: "DELETE", json: { tagId } }),
   );
+  // Coding is the document's responsiveness / privilege / confidentiality
+  // call. LitCo records it, mirrors it onto the responsiveness and privilege
+  // tags, and keeps every change in the document's coding history. A field
+  // left out is unchanged; null clears it (give a reason).
+  const coding = <T extends [string, ...string[]]>(values: T, what: string) =>
+    z.enum(values).nullable().optional().describe(`${what}; null clears it`);
+  tool(
+    { name: "litkit_set_coding", product: "litkit", write: true },
+    "Set or clear a document's responsiveness, privilege or confidentiality call (this is how a document is marked Responsive / Not Responsive / Unsure). Give at least one of the three.",
+    {
+      documentId: id("Document id"),
+      responsiveness: coding(["responsive", "not_responsive", "unsure"], "Responsiveness"),
+      privilege: coding(["not_privileged", "privileged", "partially_privileged"], "Privilege"),
+      privilegeBasis: z.string().max(500).nullable().optional().describe("Basis for the privilege call"),
+      confidentiality: coding(["not_confidential", "confidential", "highly_confidential", "aeo"], "Confidentiality"),
+      pass: z.enum(["first_pass", "second_pass", "qc"]).optional().describe("Review pass (default first_pass)"),
+      note: z.string().max(4000).nullable().optional().describe("Coding note"),
+      reason: z.string().max(1000).optional().describe("Why, for the coding history (e.g. when clearing or changing a call)"),
+    },
+    async ({ documentId, ...body }) => {
+      if (body.responsiveness === undefined && body.privilege === undefined && body.confidentiality === undefined) {
+        throw new Error("Give a responsiveness, privilege or confidentiality call (null clears one).");
+      }
+      return client.request(`/api/documents/${seg(documentId)}/coding`, { method: "PUT", json: body });
+    },
+  );
   tool(
     { name: "litkit_save_note", product: "litkit", write: true },
     "Save your note on a document (replaces your current note).",
@@ -184,12 +216,17 @@ export function registerTools(server: McpServer, client: LitcoClient, opts: { re
   );
   tool(
     { name: "litkit_post_to_thread", product: "litkit", write: true },
-    "Post a message in a matter thread under your name.",
+    "Post a message in a matter thread under your name. The response's `agent` field says whether Ana will answer: \"queued\" (she is replying), \"not_addressed\" or \"not_permitted\".",
     {
       matterId: id("Matter id"),
       threadId: id("Thread id"),
       text: z.string().min(1).max(20_000),
-      notForAna: z.boolean().optional().describe("true = don't address Ana with this post"),
+      notForAna: z
+        .boolean()
+        .optional()
+        .describe(
+          "true = don't address Ana with this post. Honored only in team or channel threads where Ana is a participant; in a private chat with Ana every post is answered regardless. Check the response's `agent` field.",
+        ),
     },
     ({ matterId, threadId, text, notForAna }) =>
       client.request(`/api/matters/${seg(matterId)}/threads/${seg(threadId)}/messages`, {

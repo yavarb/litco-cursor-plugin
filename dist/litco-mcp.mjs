@@ -7289,7 +7289,7 @@ var ApiError = class extends Error {
   status;
   code;
 };
-function explainStatus(status, code, detail = "") {
+function explainStatus(status, code, detail = "", message = "") {
   if (status === 401) {
     return "LitCo refused the token (unknown, revoked, expired, or no longer allowed by your firm). Create a new connection in LitCo \u2192 Settings \u2192 Connections, or run `litco-mcp login`.";
   }
@@ -7300,6 +7300,7 @@ function explainStatus(status, code, detail = "") {
     return "Billing hasn't been updated yet to let connected agents work with entries. Use the Billing page for now.";
   }
   if (detail && (code === "connection_pinned" || [400, 409, 410, 422].includes(status))) return detail;
+  if (message) return `LitCo returned HTTP ${status}${code ? ` (${code})` : ""}: ${message}`;
   if (status === 403) return "You don't have permission for this here, or it's outside the products or matters this connection covers.";
   if (status === 404) return "Not found, or not visible to you.";
   if (status === 429) return "Rate limited \u2014 wait a moment and retry.";
@@ -7347,14 +7348,16 @@ var LitcoClient = class {
     if (!res.ok) {
       let code = "";
       let detail = "";
+      let message = "";
       try {
         const j = await res.json();
         code = typeof j.error === "string" ? j.error : typeof j.type === "string" ? j.type : "";
         const d = typeof j.detail === "string" ? j.detail : typeof j.title === "string" ? j.title : "";
         detail = d.slice(0, 500);
+        message = typeof j.message === "string" ? j.message.trim().slice(0, 500) : "";
       } catch {
       }
-      throw new ApiError(res.status, code, explainStatus(res.status, code, detail));
+      throw new ApiError(res.status, code, explainStatus(res.status, code, detail, message));
     }
     if (opts.text) return await res.text();
     const ct = res.headers.get("content-type") ?? "";
@@ -21747,7 +21750,7 @@ function registerTools(server, client, opts) {
   );
   tool(
     { name: "litkit_list_tags", product: "litkit", write: false },
-    "The tags defined on a matter (ids are needed to tag documents).",
+    "The tags defined on a matter (ids are needed to tag documents). Responsiveness tags (Responsive / Not Responsive / Unsure) are not applied by tagging: set them with litkit_set_coding.",
     { matterId: id("Matter id") },
     ({ matterId }) => client.request("/api/tags", { query: { matterId } })
   );
@@ -21770,8 +21773,14 @@ function registerTools(server, client, opts) {
     ({ matterId }) => client.request(`/api/matters/${seg(matterId)}/review-jobs`)
   );
   tool(
+    { name: "litkit_get_coding", product: "litkit", write: false },
+    "A document's coding: its responsiveness, privilege and confidentiality calls (per review pass) and their history.",
+    { documentId: id("Document id") },
+    ({ documentId }) => client.request(`/api/documents/${seg(documentId)}/coding`)
+  );
+  tool(
     { name: "litkit_tag_document", product: "litkit", write: true },
-    "Apply a tag to a document (optionally to its attachments or whole family).",
+    "Apply a tag to a document (optionally to its attachments or whole family). Not for responsiveness: LitCo refuses responsiveness tags here (coding_tag); use litkit_set_coding.",
     {
       documentId: id("Document id"),
       tagId: external_exports.string().uuid().describe("Tag id from litkit_list_tags"),
@@ -21785,6 +21794,27 @@ function registerTools(server, client, opts) {
     { documentId: id("Document id"), tagId: external_exports.string().uuid() },
     ({ documentId, tagId }) => client.request(`/api/documents/${seg(documentId)}/tags`, { method: "DELETE", json: { tagId } })
   );
+  const coding = (values, what) => external_exports.enum(values).nullable().optional().describe(`${what}; null clears it`);
+  tool(
+    { name: "litkit_set_coding", product: "litkit", write: true },
+    "Set or clear a document's responsiveness, privilege or confidentiality call (this is how a document is marked Responsive / Not Responsive / Unsure). Give at least one of the three.",
+    {
+      documentId: id("Document id"),
+      responsiveness: coding(["responsive", "not_responsive", "unsure"], "Responsiveness"),
+      privilege: coding(["not_privileged", "privileged", "partially_privileged"], "Privilege"),
+      privilegeBasis: external_exports.string().max(500).nullable().optional().describe("Basis for the privilege call"),
+      confidentiality: coding(["not_confidential", "confidential", "highly_confidential", "aeo"], "Confidentiality"),
+      pass: external_exports.enum(["first_pass", "second_pass", "qc"]).optional().describe("Review pass (default first_pass)"),
+      note: external_exports.string().max(4e3).nullable().optional().describe("Coding note"),
+      reason: external_exports.string().max(1e3).optional().describe("Why, for the coding history (e.g. when clearing or changing a call)")
+    },
+    async ({ documentId, ...body }) => {
+      if (body.responsiveness === void 0 && body.privilege === void 0 && body.confidentiality === void 0) {
+        throw new Error("Give a responsiveness, privilege or confidentiality call (null clears one).");
+      }
+      return client.request(`/api/documents/${seg(documentId)}/coding`, { method: "PUT", json: body });
+    }
+  );
   tool(
     { name: "litkit_save_note", product: "litkit", write: true },
     "Save your note on a document (replaces your current note).",
@@ -21793,12 +21823,14 @@ function registerTools(server, client, opts) {
   );
   tool(
     { name: "litkit_post_to_thread", product: "litkit", write: true },
-    "Post a message in a matter thread under your name.",
+    'Post a message in a matter thread under your name. The response\'s `agent` field says whether Ana will answer: "queued" (she is replying), "not_addressed" or "not_permitted".',
     {
       matterId: id("Matter id"),
       threadId: id("Thread id"),
       text: external_exports.string().min(1).max(2e4),
-      notForAna: external_exports.boolean().optional().describe("true = don't address Ana with this post")
+      notForAna: external_exports.boolean().optional().describe(
+        "true = don't address Ana with this post. Honored only in team or channel threads where Ana is a participant; in a private chat with Ana every post is answered regardless. Check the response's `agent` field."
+      )
     },
     ({ matterId, threadId, text, notForAna }) => client.request(`/api/matters/${seg(matterId)}/threads/${seg(threadId)}/messages`, {
       method: "POST",

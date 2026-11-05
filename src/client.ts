@@ -122,8 +122,13 @@ export class ApiError extends Error {
   }
 }
 
-/** Human explanation of a refusal, so the agent can tell its person what to do. */
-export function explainStatus(status: number, code: string, detail = ""): string {
+/**
+ * Human explanation of a refusal, so the agent can tell its person what to do.
+ * `detail` is a route's own sentence (Billing's `detail`/`title`); `message` is
+ * the human reason LitCo Review routes send beside their `error` code (e.g. a
+ * responsiveness tag refused with `coding_tag`), shown after the code.
+ */
+export function explainStatus(status: number, code: string, detail = "", message = ""): string {
   if (status === 401) {
     return "LitCo refused the token (unknown, revoked, expired, or no longer allowed by your firm). Create a new connection in LitCo → Settings → Connections, or run `litco-mcp login`.";
   }
@@ -136,6 +141,7 @@ export function explainStatus(status: number, code: string, detail = ""): string
   // Billing explains its own refusals (locked or billed entries, an expired
   // confirm token, an entry edited since); pass its words through.
   if (detail && (code === "connection_pinned" || [400, 409, 410, 422].includes(status))) return detail;
+  if (message) return `LitCo returned HTTP ${status}${code ? ` (${code})` : ""}: ${message}`;
   if (status === 403) return "You don't have permission for this here, or it's outside the products or matters this connection covers.";
   if (status === 404) return "Not found, or not visible to you.";
   if (status === 429) return "Rate limited — wait a moment and retry.";
@@ -193,15 +199,23 @@ export class LitcoClient {
     if (!res.ok) {
       let code = "";
       let detail = "";
+      let message = "";
       try {
-        const j = (await res.json()) as { error?: unknown; type?: unknown; title?: unknown; detail?: unknown };
+        const j = (await res.json()) as {
+          error?: unknown;
+          type?: unknown;
+          title?: unknown;
+          detail?: unknown;
+          message?: unknown;
+        };
         code = typeof j.error === "string" ? j.error : typeof j.type === "string" ? j.type : "";
         const d = typeof j.detail === "string" ? j.detail : typeof j.title === "string" ? j.title : "";
         detail = d.slice(0, 500);
+        message = typeof j.message === "string" ? j.message.trim().slice(0, 500) : "";
       } catch {
         // non-JSON error body
       }
-      throw new ApiError(res.status, code, explainStatus(res.status, code, detail));
+      throw new ApiError(res.status, code, explainStatus(res.status, code, detail, message));
     }
     if (opts.text) return (await res.text()) as T;
     const ct = res.headers.get("content-type") ?? "";

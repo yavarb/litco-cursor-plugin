@@ -267,6 +267,24 @@ describe("LitCo Review coding tools", () => {
     ]);
   });
 
+  it("reads a LitCo Files document's extracted text from /text, paging by offset (prod 2026-11-04)", async () => {
+    // On prod /content (no op) answered 400 invalid_input for every file, and
+    // its byte ops need strict MFA, so a connection could read no file at all.
+    const urls: string[] = [];
+    const handlers = capture((async (url: string) => {
+      urls.push(url);
+      return json({ textStatus: "ready", text: "Complaint for damages", offset: 0, nextOffset: null, truncated: false });
+    }) as never);
+    const r = await handlers.get("litspace_read_file")!({ fileId: "file_1" });
+    expect(r.isError).toBeUndefined();
+    expect(JSON.parse(r.content[0]!.text).text).toBe("Complaint for damages");
+    await handlers.get("litspace_read_file")!({ fileId: "file_1", offset: 100000 });
+    expect(urls).toEqual([
+      "https://x.litco.ai/api/litspace/files/file_1/text?limit=100000",
+      "https://x.litco.ai/api/litspace/files/file_1/text?offset=100000&limit=100000",
+    ]);
+  });
+
   it("set_coding needs a responsiveness, privilege or confidentiality call before it calls LitCo", async () => {
     let called = false;
     const handlers = capture((async () => {

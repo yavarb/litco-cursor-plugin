@@ -13,7 +13,7 @@ Tools: `litspace_list_files`, `litspace_search`, `litspace_read_file`,
 1. `litco_whoami` → the matter id (LitCo Files tools take the **LitCo Review** matter id).
 2. `litspace_list_files` (optionally `parentId` for a folder) or
    `litspace_search` with `q`.
-3. `litspace_read_file` with a file id to read its text.
+3. `litspace_read_file` with a file id to read its extracted text; when `nextOffset` is not null, call again with `offset` set to it.
 4. `litspace_upload_file` with a local `path` (≤ 50 MB) puts a file into the
    vault under the person's name; pass `parentId` to choose a folder. It needs
    the person's write access on the matter.
